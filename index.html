@@ -1,0 +1,631 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SimplerQMS · Sales Intelligence</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0c0e12;--s1:#12151c;--s2:#181c26;--s3:#1e2330;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+  --text:#e2e5ee;--muted:#6e7487;--dim:#3a3f52;
+  --won:#16a974;--won-bg:rgba(22,169,116,.12);
+  --active:#3d8ef8;--active-bg:rgba(61,142,248,.12);
+  --risk:#e8a020;--risk-bg:rgba(232,160,32,.12);
+  --lost:#e05252;--lost-bg:rgba(224,82,82,.12);
+  --purple:#9b7fe8;--purple-bg:rgba(155,127,232,.12);
+  --teal:#22cec4;--teal-bg:rgba(34,206,196,.12);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;font-size:14px;line-height:1.6}
+
+nav{position:sticky;top:0;z-index:200;background:rgba(12,14,18,.96);backdrop-filter:blur(20px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:.625rem 2rem;gap:12px}
+.nav-logo{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;letter-spacing:-.02em;flex-shrink:0}
+.nav-logo em{color:var(--purple);font-style:normal}
+.nav-links{display:flex;gap:2px;flex-wrap:wrap}
+.nav-link{font-size:12px;padding:5px 10px;border-radius:6px;color:var(--muted);cursor:pointer;transition:all .15s;border:none;background:none}
+.nav-link:hover,.nav-link.active{color:var(--text);background:var(--s2)}
+.nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.search-wrap{position:relative}
+.search-input{background:var(--s1);border:1px solid var(--border);border-radius:7px;padding:5px 10px 5px 28px;font-size:12px;color:var(--text);width:160px;outline:none;font-family:inherit;transition:border-color .15s}
+.search-input:focus{border-color:var(--border2);width:220px}
+.search-input::placeholder{color:var(--dim)}
+.search-icon{position:absolute;left:9px;top:50%;transform:translateY(-50%);color:var(--dim);font-size:12px;pointer-events:none}
+.live-dot{width:7px;height:7px;background:var(--won);border-radius:50%;display:inline-block;margin-right:5px;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.live-lbl{font-size:11px;color:var(--muted)}
+
+.hero{padding:3rem 2rem 2.5rem;border-bottom:1px solid var(--border);background:linear-gradient(180deg,rgba(155,127,232,.05) 0%,transparent 100%)}
+.hero-eyebrow{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--purple);margin-bottom:.625rem}
+.hero-title{font-family:'Syne',sans-serif;font-size:2.2rem;font-weight:800;letter-spacing:-.04em;line-height:1.1;margin-bottom:.875rem}
+.hero-title span{color:var(--purple)}
+.hero-sub{font-size:13px;color:var(--muted);max-width:580px;line-height:1.7;margin-bottom:1.5rem}
+.kpi-row{display:grid;grid-template-columns:repeat(6,1fr);gap:8px}
+.kpi{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:.875rem 1rem;transition:border-color .15s}
+.kpi:hover{border-color:var(--border2)}
+.kpi-val{font-size:1.7rem;font-weight:600;line-height:1;margin-bottom:3px}
+.kpi-lbl{font-size:11px;color:var(--muted);line-height:1.4}
+
+section{padding:2.5rem 2rem;border-bottom:1px solid var(--border)}
+.section-header{display:flex;align-items:baseline;gap:1rem;margin-bottom:1.5rem}
+.section-title{font-family:'Syne',sans-serif;font-size:1.25rem;font-weight:800;letter-spacing:-.02em}
+.section-count{font-size:12px;color:var(--muted)}
+.sub-head{font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:.875rem 0 .625rem}
+
+/* FUNNEL */
+.pyramid-container{display:flex;gap:2.5rem;align-items:flex-start}
+.pyramid-visual{flex:0 0 300px}
+.pyramid-layers{display:flex;flex-direction:column;align-items:center;gap:4px}
+.layer{display:flex;align-items:center;justify-content:space-between;border-radius:7px;padding:0 14px;height:50px;cursor:pointer;transition:all .18s}
+.layer:hover{transform:translateX(4px)}
+.layer-name{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:rgba(255,255,255,.9)}
+.layer-n{font-size:1.1rem;font-weight:600;color:#fff}
+.conv-arrow{font-size:10px;color:var(--muted);text-align:center;margin:1px 0}
+.pyramid-detail{flex:1}
+.funnel-bars{display:flex;flex-direction:column;gap:7px;margin-bottom:1.5rem}
+.fb-row{display:flex;align-items:center;gap:10px}
+.fb-lbl{font-size:12px;color:var(--muted);width:90px;flex-shrink:0}
+.fb-bg{flex:1;height:24px;background:var(--s2);border-radius:5px;overflow:hidden;border:1px solid var(--border)}
+.fb-fill{height:100%;display:flex;align-items:center;padding-left:10px;font-size:11px;font-weight:500;color:rgba(255,255,255,.8);border-radius:5px;transition:width .7s cubic-bezier(.4,0,.2,1)}
+.fb-num{font-size:12px;color:var(--muted);width:30px;text-align:right;flex-shrink:0}
+
+/* DEALS */
+.filter-bar{display:flex;gap:5px;margin-bottom:1rem;flex-wrap:wrap;align-items:center}
+.pill{font-size:11px;padding:4px 10px;border-radius:20px;border:1px solid var(--border);cursor:pointer;color:var(--muted);background:transparent;transition:all .15s}
+.pill.on{background:var(--s2);color:var(--text);border-color:var(--border2)}
+.sort-select{font-size:11px;padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:var(--s1);color:var(--muted);cursor:pointer;outline:none;margin-left:auto}
+.deal-grid{display:grid;grid-template-columns:1fr;gap:7px}
+.deal-row{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:.875rem 1rem;cursor:pointer;transition:border-color .15s}
+.deal-row:hover{border-color:var(--border2)}
+.deal-row.close{border-left:3px solid var(--won)}
+.deal-row.active{border-left:3px solid var(--active)}
+.deal-row.risk{border-left:3px solid var(--risk)}
+.deal-row.lost{border-left:3px solid var(--lost)}
+.deal-row.nurture{border-left:3px solid var(--purple)}
+.deal-row.discovery{border-left:3px solid var(--dim)}
+.deal-row.demo{border-left:3px solid var(--teal)}
+.deal-header{display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px}
+.deal-name{font-size:13px;font-weight:500;margin-bottom:2px}
+.deal-meta{font-size:11px;color:var(--muted);display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.deal-badges{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;flex-shrink:0}
+.score-bar{height:3px;background:var(--s3);border-radius:2px;margin-bottom:0}
+.score-fill{height:3px;border-radius:2px;transition:width .6s ease}
+.badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.badge-close{background:var(--won-bg);color:var(--won)}
+.badge-won{background:var(--won-bg);color:var(--won)}
+.badge-active{background:var(--active-bg);color:var(--active)}
+.badge-risk{background:var(--risk-bg);color:var(--risk)}
+.badge-lost{background:var(--lost-bg);color:var(--lost)}
+.badge-nurture{background:var(--purple-bg);color:var(--purple)}
+.badge-teal{background:var(--teal-bg);color:var(--teal)}
+.days-badge{background:var(--s2);color:var(--muted);padding:1px 6px;border-radius:4px;font-size:10px}
+.expand-area{max-height:0;overflow:hidden;transition:max-height .35s cubic-bezier(.4,0,.2,1)}
+.expand-area.open{max-height:600px}
+.expand-inner{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:.875rem;margin-top:.875rem;border-top:1px solid var(--border)}
+.ei-box{background:var(--bg);border-radius:8px;padding:.75rem}
+.ei-lbl{font-size:10px;font-weight:600;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin-bottom:4px}
+.ei-val{font-size:12px;line-height:1.55}
+.sentiment-quote{background:var(--s2);border-left:2px solid var(--purple);border-radius:0 8px 8px 0;padding:.75rem 1rem;margin-top:.875rem;font-size:12px;font-style:italic;line-height:1.6}
+.expand-link{display:inline-flex;align-items:center;gap:4px;font-size:11px;color:var(--active);text-decoration:none;margin-top:.75rem}
+.expand-link:hover{text-decoration:underline}
+
+/* REPS */
+.rep-row{display:flex;align-items:center;gap:12px;padding:.625rem 0;border-bottom:1px solid var(--border)}
+.rep-row:last-child{border-bottom:none}
+.rep-av{width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+.rep-name{font-size:13px;font-weight:500}
+.rep-sub{font-size:11px;color:var(--muted);line-height:1.4}
+
+/* LOSS / SENTIMENT / INSIGHTS */
+.loss-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.5rem}
+.loss-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem}
+.loss-count{font-size:1.4rem;font-weight:600;color:var(--lost);margin-bottom:4px}
+.loss-title{font-size:13px;font-weight:500;margin-bottom:6px}
+.loss-body{font-size:12px;color:var(--muted);line-height:1.6}
+.sent-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem}
+.sent-pct{font-size:1.5rem;font-weight:600;margin-bottom:4px}
+.sent-title{font-size:13px;font-weight:500;margin-bottom:6px}
+.sent-body{font-size:12px;color:var(--muted);line-height:1.6}
+.sentiment-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:1.5rem}
+.insight-list{display:flex;flex-direction:column;gap:10px}
+.insight-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:1rem 1.1rem}
+.insight-head{font-size:13px;font-weight:600;margin-bottom:6px}
+.insight-body{font-size:12px;color:var(--muted);line-height:1.6}
+.comp-track-card{background:var(--s1);border:1px solid var(--border);border-radius:10px;padding:.875rem 1rem;margin-bottom:8px}
+.comp-track-name{font-size:13px;font-weight:500;margin-bottom:6px;display:flex;align-items:center;gap:8px}
+.comp-count-badge{font-size:10px;font-weight:600;padding:1px 7px;border-radius:20px;background:var(--lost-bg);color:var(--lost)}
+.comp-deal-row{display:flex;align-items:center;gap:8px;font-size:11px;padding:3px 0;border-bottom:1px solid var(--border)}
+.comp-deal-row:last-child{border-bottom:none}
+.comp-deal-company{flex:1;color:var(--muted)}
+.comp-tracker{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+
+.loading-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:4rem 2rem;gap:1rem;color:var(--muted)}
+.loading-spinner{width:32px;height:32px;border:2px solid var(--border);border-top-color:var(--purple);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+mark.hl{background:rgba(155,127,232,.25);color:var(--text);border-radius:3px;padding:0 2px}
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="nav-logo">Simpler<em>QMS</em> · Sales Intelligence</div>
+  <div class="nav-links">
+    <button class="nav-link active" onclick="navTo('hero',this)">Overview</button>
+    <button class="nav-link" onclick="navTo('pyramid',this)">Funnel</button>
+    <button class="nav-link" onclick="navTo('deals',this)">Deals</button>
+    <button class="nav-link" onclick="navTo('reps',this)">Reps</button>
+    <button class="nav-link" onclick="navTo('insights',this)">Insights</button>
+    <button class="nav-link" onclick="navTo('sentiment',this)">Sentiment</button>
+  </div>
+  <div class="nav-right">
+    <div class="search-wrap">
+      <span class="search-icon">⌕</span>
+      <input class="search-input" placeholder="Search deals…" oninput="handleSearch(this.value)" id="search-box">
+    </div>
+    <div>
+      <span class="live-dot"></span>
+      <span class="live-lbl" id="live-lbl">Loading…</span>
+    </div>
+  </div>
+</nav>
+
+<!-- HERO -->
+<div class="hero" id="hero">
+  <div class="hero-eyebrow">Live · tldv × Claude × n8n</div>
+  <h1 class="hero-title">Sales <span>Intelligence</span></h1>
+  <p class="hero-sub">Every sales call analysed automatically. Full pipeline from April 2026 onwards — live from the data store, refreshed every 5 minutes.</p>
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-val" id="k-total" style="color:var(--active)">—</div><div class="kpi-lbl">Total deals</div></div>
+    <div class="kpi"><div class="kpi-val" id="k-close" style="color:var(--won)">—</div><div class="kpi-lbl">Near close</div></div>
+    <div class="kpi"><div class="kpi-val" id="k-active" style="color:var(--active)">—</div><div class="kpi-lbl">Active</div></div>
+    <div class="kpi"><div class="kpi-val" id="k-risk" style="color:var(--risk)">—</div><div class="kpi-lbl">At risk</div></div>
+    <div class="kpi"><div class="kpi-val" id="k-score" style="color:var(--purple)">—</div><div class="kpi-lbl">Avg score</div></div>
+    <div class="kpi"><div class="kpi-val" id="k-lost" style="color:var(--lost)">—</div><div class="kpi-lbl">Lost / nurture</div></div>
+  </div>
+</div>
+
+<!-- FUNNEL -->
+<section id="pyramid">
+  <div class="section-header">
+    <div class="section-title">Sales funnel</div>
+    <div class="section-count" id="funnel-count"></div>
+  </div>
+  <div class="pyramid-container">
+    <div class="pyramid-visual">
+      <div class="pyramid-layers" id="pyr-layers"></div>
+    </div>
+    <div class="pyramid-detail">
+      <div class="funnel-bars" id="funnel-bars"></div>
+    </div>
+  </div>
+</section>
+
+<!-- DEALS -->
+<section id="deals">
+  <div class="section-header">
+    <div class="section-title">All deals</div>
+    <div class="section-count" id="deal-count"></div>
+  </div>
+  <div class="filter-bar">
+    <button class="pill on" onclick="filterDeals(this,'all')">All</button>
+    <button class="pill" onclick="filterDeals(this,'close')">Near close</button>
+    <button class="pill" onclick="filterDeals(this,'active')">Active</button>
+    <button class="pill" onclick="filterDeals(this,'risk')">At risk</button>
+    <button class="pill" onclick="filterDeals(this,'nurture')">Nurture</button>
+    <button class="pill" onclick="filterDeals(this,'discovery')">Discovery</button>
+    <button class="pill" onclick="filterDeals(this,'lost')">Lost</button>
+    <select class="sort-select" onchange="handleSort(this.value)">
+      <option value="score">Sort: Score</option>
+      <option value="date">Sort: Date</option>
+      <option value="name">Sort: Name</option>
+      <option value="stage">Sort: Stage</option>
+    </select>
+  </div>
+  <div id="deal-list">
+    <div class="loading-state">
+      <div class="loading-spinner"></div>
+      <div>Loading deals from data store…</div>
+    </div>
+  </div>
+</section>
+
+<!-- REP PERFORMANCE -->
+<section id="reps">
+  <div class="section-header">
+    <div class="section-title">Rep performance</div>
+    <div class="section-count" id="reps-count"></div>
+  </div>
+  <div id="rep-list"></div>
+</section>
+
+<!-- INSIGHTS -->
+<section id="insights">
+  <div class="section-header">
+    <div class="section-title">Loss analysis</div>
+    <div class="section-count" id="loss-count"></div>
+  </div>
+  <div class="loss-grid" id="loss-grid"></div>
+  <div class="sub-head">Competitor tracker</div>
+  <div class="comp-tracker" id="comp-tracker"></div>
+</section>
+
+<!-- SENTIMENT -->
+<section id="sentiment">
+  <div class="section-header">
+    <div class="section-title">Customer sentiment &amp; quotes</div>
+    <div class="section-count" id="sentiment-count"></div>
+  </div>
+  <div class="sentiment-grid" id="sentiment-grid"></div>
+  <div class="sub-head">Verbatim customer quotes</div>
+  <div class="deal-grid" id="quote-list"></div>
+</section>
+
+<div style="padding:2rem;text-align:center;color:var(--dim);font-size:12px;border-top:1px solid var(--border)">
+  SimplerQMS Sales Intelligence · Powered by tldv × Claude × n8n · <span id="last-updated"></span>
+</div>
+
+<script>
+const API = 'https://simplerqms.app.n8n.cloud/webhook/sales-pyramid-data';
+
+let DEALS = [];
+let currentFilter = 'all';
+let currentSort = 'score';
+let searchTerm = '';
+
+const stageOrder = {close:0,won:0,active:1,risk:2,demo:3,nurture:4,discovery:5,lost:6};
+const stageBadge = {close:'badge-close',won:'badge-won',active:'badge-active',risk:'badge-risk',lost:'badge-lost',nurture:'badge-nurture',demo:'badge-teal',discovery:'badge-teal'};
+const stageLabel = {close:'Near close',won:'Won',active:'Active',risk:'At risk',lost:'Lost',nurture:'Nurture',demo:'Demo',discovery:'Discovery'};
+
+function scoreColor(s){return s>=80?'#16a974':s>=70?'#3d8ef8':s>=60?'#e8a020':'#e05252';}
+
+function normalizeRep(rep){
+  if(!rep) return '';
+  const r = rep.trim();
+  if(/martin\s+a(ngelovski)?\.?$/i.test(r)) return 'Martin Angelovski';
+  if(/martin\s+c(holeski)?\.?$/i.test(r)) return 'Martin Choleski';
+  if(/thomas\s+t(schirhart)?\.?$/i.test(r)) return 'Thomas Tschirhart';
+  if(/alex\s+p(opa)?\.?$/i.test(r)) return 'Alex Popa';
+  if(/milo\s+s(hirley)?\.?$/i.test(r)) return 'Milo Shirley';
+  return r;
+}
+
+const EXCLUDED_REPS = ['jasmine','wim'];
+
+function rowToDeal(r){
+  const d = r.data || r;
+  const rep = normalizeRep(d.rep || '');
+  return {
+    id: d.meeting_id || d.id || '',
+    name: d.company || d.meeting_name || '',
+    rep: rep,
+    date: (d.call_date || '').substring(0,10),
+    stage: (d.stage || 'active').toLowerCase(),
+    score: Number(d.score) || 0,
+    pct: d.likelihood || '',
+    pain: d.pain_points || '',
+    signal: d.buying_signals || '',
+    risk: d.risks || '',
+    next: d.next_steps || '',
+    quote: d.key_quote || '',
+    url: d.tldv_url || '#',
+    lossReason: d.loss_reason || '',
+    competitors: d.sentiment || ''   // we stored competitors in sentiment field
+  };
+}
+
+function updateKPIs(){
+  const c={};
+  DEALS.forEach(x=>{c[x.stage]=(c[x.stage]||0)+1;});
+  const avg = DEALS.length ? Math.round(DEALS.reduce((a,x)=>a+(x.score||0),0)/DEALS.length) : 0;
+  document.getElementById('k-total').textContent = DEALS.length;
+  document.getElementById('k-close').textContent = (c.close||0)+(c.won||0);
+  document.getElementById('k-active').textContent = (c.active||0);
+  document.getElementById('k-risk').textContent = (c.risk||0);
+  document.getElementById('k-score').textContent = avg+'/100';
+  document.getElementById('k-lost').textContent = (c.lost||0)+(c.nurture||0);
+}
+
+function buildPyramid(){
+  const c={};
+  DEALS.forEach(x=>{c[x.stage]=(c[x.stage]||0)+1;});
+  const total = DEALS.length || 1;
+  const layers=[
+    {label:'Near close',n:(c.close||0)+(c.won||0),bg:'linear-gradient(135deg,#6c4bdb,#8b5cf6)',filter:'close'},
+    {label:'Active eval',n:(c.active||0),bg:'linear-gradient(135deg,#1a6fd4,#3d8ef8)',filter:'active'},
+    {label:'At risk',n:(c.risk||0),bg:'linear-gradient(135deg,#107a7a,#22cec4)',filter:'risk'},
+    {label:'Nurture',n:(c.nurture||0),bg:'linear-gradient(135deg,#7a6210,#e8a020)',filter:'nurture'},
+    {label:'Discovery',n:(c.discovery||0),bg:'linear-gradient(135deg,#4a4a3a,#888780)',filter:'discovery'},
+  ];
+  const widths=['52%','64%','76%','88%','100%'];
+  document.getElementById('pyr-layers').innerHTML = layers.map((l,i)=>
+    (i>0?'<div class="conv-arrow">↓</div>':'')+
+    `<div class="layer" style="width:${widths[i]};background:${l.bg}" onclick="filterDeals(null,'${l.filter}');navTo('deals',null)">
+      <span class="layer-name">${l.label}</span><span class="layer-n">${l.n}</span>
+    </div>`
+  ).join('');
+  document.getElementById('funnel-count').textContent = `${DEALS.length} deals tracked`;
+  const stageColors={close:'#8b5cf6',active:'#3d8ef8',risk:'#22cec4',nurture:'#e8a020',discovery:'#888780',lost:'#e05252'};
+  const stageNames=['close','active','risk','nurture','discovery','lost'];
+  document.getElementById('funnel-bars').innerHTML = stageNames.map(s=>{
+    const n=(c[s]||0)+(s==='close'?(c.won||0):0);
+    const pct=Math.round(n/total*100);
+    const col=stageColors[s]||'#888';
+    return `<div class="fb-row">
+      <div class="fb-lbl">${stageLabel[s]||s}</div>
+      <div class="fb-bg"><div class="fb-fill" style="width:${pct}%;background:${col}">${n>0?n:''}</div></div>
+      <div class="fb-num">${n}</div>
+    </div>`;
+  }).join('');
+}
+
+function buildReps(){
+  const repMap={};
+  DEALS.forEach(d=>{
+    if(!d.rep) return;
+    const key=d.rep;
+    if(!repMap[key]) repMap[key]={name:key,deals:[],totalScore:0};
+    repMap[key].deals.push(d);
+    repMap[key].totalScore+=d.score||0;
+  });
+  const reps=Object.values(repMap).map(r=>({
+    ...r,
+    avgScore:r.deals.length?Math.round(r.totalScore/r.deals.length):0,
+    closes:r.deals.filter(d=>d.stage==='close'||d.stage==='won').length
+  })).sort((a,b)=>b.avgScore-a.avgScore);
+  const colors=['#3d8ef8','#16a974','#e8a020','#9b7fe8','#e05252','#22cec4'];
+  document.getElementById('reps-count').textContent = `${reps.length} reps · ${DEALS.length} calls`;
+  document.getElementById('rep-list').innerHTML = reps.map((r,i)=>{
+    const col=colors[i%colors.length];
+    const initials=r.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
+    const topDeals=r.deals.slice().sort((a,b)=>b.score-a.score).slice(0,3).map(d=>`${d.name} (${d.score})`).join(', ');
+    return `<div class="rep-row">
+      <div class="rep-av" style="background:${col}22;color:${col}">${initials}</div>
+      <div style="flex:1;min-width:0">
+        <div class="rep-name">${r.name}</div>
+        <div class="rep-sub">${r.deals.length} deals · ${r.closes} near close · Top: ${topDeals||'—'}</div>
+      </div>
+      <div style="width:80px;height:4px;background:var(--s3);border-radius:2px;flex-shrink:0">
+        <div style="width:${r.avgScore}%;height:4px;background:${col};border-radius:2px"></div>
+      </div>
+      <span style="font-size:12px;color:var(--muted);width:32px;text-align:right;flex-shrink:0">${r.avgScore}</span>
+    </div>`;
+  }).join('');
+}
+
+function buildLossAnalysis(){
+  const lost=DEALS.filter(d=>d.stage==='lost'||d.stage==='nurture');
+  document.getElementById('loss-count').textContent = `${lost.length} lost or stalled · patterns from full pipeline`;
+
+  // Loss reason buckets
+  const reasons={
+    price_mismatch:{label:'💰 Price too high for company stage',count:0,body:'Budget gap was the primary blocker. Minimum spend creates sticker shock for early-stage or very small companies outside the ICP.'},
+    feature_gap:{label:'🧩 Missing feature (PLM, hierarchical folders, quizzes)',count:0,body:'Specific feature gaps that a competitor filled — hierarchical folder structure, integrated PLM traceability, or native quiz builder.'},
+    wrong_timing:{label:'⏱️ Wrong timing / not ready to buy',count:0,body:'Company not mature enough, funding pending, or competing priorities (ERP migration, product launch) pushed the decision out.'},
+    competitor_relationship:{label:'🤝 Competitor had prior relationship',count:0,body:'Prospect was already familiar with a competitor system. First-mover advantage is hard to overcome with demos alone.'},
+    no_urgency:{label:'📋 No regulatory urgency',count:0,body:'No imminent audit, certification deadline, or compliance pressure to force a decision. Deal stalled without a forcing function.'},
+  };
+  lost.forEach(d=>{
+    const r=d.lossReason;
+    if(r&&reasons[r]) reasons[r].count++;
+  });
+
+  const sorted=Object.values(reasons).sort((a,b)=>b.count-a.count);
+  document.getElementById('loss-grid').innerHTML = sorted.map(r=>`
+    <div class="loss-card">
+      <div class="loss-count">${r.count}</div>
+      <div class="loss-title">${r.label}</div>
+      <div class="loss-body">${r.body}</div>
+    </div>`).join('');
+
+  // Competitor tracker
+  const compMap={};
+  DEALS.forEach(d=>{
+    if(!d.competitors) return;
+    d.competitors.split(',').map(c=>c.trim()).filter(Boolean).forEach(comp=>{
+      if(!compMap[comp]) compMap[comp]=[];
+      compMap[comp].push(d);
+    });
+  });
+  const sorted2=Object.entries(compMap).sort((a,b)=>b[1].length-a[1].length).slice(0,8);
+  document.getElementById('comp-tracker').innerHTML = sorted2.length ? sorted2.map(([comp,deals])=>`
+    <div class="comp-track-card">
+      <div class="comp-track-name">${comp}<span class="comp-count-badge">${deals.length} deal${deals.length>1?'s':''}</span></div>
+      <div>${deals.slice(0,4).map(d=>`
+        <div class="comp-deal-row">
+          <span class="comp-deal-company">${d.name}</span>
+          <span class="badge ${stageBadge[d.stage]||'badge-teal'}">${stageLabel[d.stage]||d.stage}</span>
+          <span style="font-size:11px;color:${scoreColor(d.score)}">${d.score}</span>
+        </div>`).join('')}
+      </div>
+    </div>`).join('') : '<div style="color:var(--muted);font-size:12px">No competitor data yet.</div>';
+}
+
+function buildSentiment(){
+  const withQuotes=DEALS.filter(d=>d.quote&&d.quote.length>10);
+  document.getElementById('sentiment-count').textContent = `${withQuotes.length} quotes across ${DEALS.length} calls`;
+
+  // Sentiment cards — computed from stage distribution
+  const total=DEALS.length||1;
+  const activeClose=DEALS.filter(d=>d.stage==='active'||d.stage==='close'||d.stage==='won').length;
+  const highScore=DEALS.filter(d=>d.score>=70).length;
+  const atRisk=DEALS.filter(d=>d.stage==='risk').length;
+  const lost=DEALS.filter(d=>d.stage==='lost').length;
+  const wordPos=DEALS.filter(d=>(d.signal||'').toLowerCase().includes('word')||(d.quote||'').toLowerCase().includes('word')).length;
+  const priceConcern=DEALS.filter(d=>(d.risk||'').toLowerCase().includes('price')||(d.risk||'').toLowerCase().includes('budget')).length;
+
+  const cards=[
+    {pct:Math.round(wordPos/total*100)+'%',col:'var(--won)',title:'Word integration — universally loved',body:'The single most praised feature. Customers consistently light up when they see checkout/check-in in Word. No other feature generates as much genuine enthusiasm.'},
+    {pct:Math.round(highScore/total*100)+'%',col:'var(--active)',title:'High-scoring deals — strong product fit',body:'Deals scoring 70+ show clear alignment with the ICP. SimplerQMS resonates most with 10–150 person life sciences companies with a compliance deadline.'},
+    {pct:Math.round(priceConcern/total*100)+'%',col:'var(--risk)',title:'Pricing concern — recurring risk factor',body:'Price gap vs competitors appears consistently in risk fields. Most common below 20 users where the minimum spend creates sticker shock.'},
+    {pct:Math.round(activeClose/total*100)+'%',col:'var(--teal)',title:'Active + near close — healthy pipeline',body:'Majority of deals are in active evaluation or near close, indicating strong top-of-funnel conversion from demo to serious evaluation.'},
+    {pct:Math.round(atRisk/total*100)+'%',col:'var(--risk)',title:'At-risk deals need attention',body:'Deals flagged as at-risk often have a single unresolved blocker — pricing, a missing feature, or a key stakeholder not yet engaged.'},
+    {pct:Math.round(lost/total*100)+'%',col:'var(--lost)',title:'Lost deals — timing and price dominate',body:'Most losses come from outside the ICP (too small, too early-stage) or a specific feature gap. Right-sizing qualification at discovery would reduce wasted demo time.'},
+  ];
+
+  document.getElementById('sentiment-grid').innerHTML = cards.map(c=>`
+    <div class="sent-card">
+      <div class="sent-pct" style="color:${c.col}">${c.pct}</div>
+      <div class="sent-title">${c.title}</div>
+      <div class="sent-body">${c.body}</div>
+    </div>`).join('');
+
+  // Quotes
+  const topQuotes=withQuotes.slice().sort((a,b)=>b.score-a.score).slice(0,12);
+  document.getElementById('quote-list').innerHTML = topQuotes.map(d=>`
+    <div class="deal-row ${d.stage}" style="cursor:default">
+      <div class="deal-header">
+        <div>
+          <div class="deal-name" style="font-style:italic;font-weight:400">${d.quote}</div>
+          <div class="deal-meta"><span>${d.name}</span><span>·</span><span>${d.rep}</span><span>·</span><span>${d.date}</span></div>
+        </div>
+        <span class="badge ${stageBadge[d.stage]||'badge-teal'}">${stageLabel[d.stage]||d.stage}</span>
+      </div>
+    </div>`).join('');
+}
+
+function getDeals(){
+  let d=[...DEALS];
+  if(currentFilter!=='all') d=d.filter(x=>x.stage===currentFilter||(currentFilter==='close'&&x.stage==='won'));
+  if(searchTerm) d=d.filter(x=>[x.name,x.rep,x.pain,x.signal,x.next,x.quote].join(' ').toLowerCase().includes(searchTerm.toLowerCase()));
+  d.sort((a,b)=>{
+    if(currentSort==='score') return (b.score||0)-(a.score||0);
+    if(currentSort==='date') return (b.date||'').localeCompare(a.date||'');
+    if(currentSort==='name') return (a.name||'').localeCompare(b.name||'');
+    if(currentSort==='stage') return (stageOrder[a.stage]||99)-(stageOrder[b.stage]||99);
+    return 0;
+  });
+  return d;
+}
+
+function hl(text,term){
+  if(!term||!text) return text||'';
+  const re=new RegExp('('+term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&')+')','gi');
+  return text.replace(re,'<mark class="hl">$1</mark>');
+}
+
+const PAGE_SIZE = 25;
+let visibleCount = PAGE_SIZE;
+
+function dealCard(x, t){
+  return `<div class="deal-row ${x.stage}" onclick="toggleDeal('${x.id}')">
+    <div class="deal-header">
+      <div>
+        <div class="deal-name">${hl(x.name,t)}</div>
+        <div class="deal-meta">
+          <span>${hl(x.rep,t)}</span><span>·</span><span>${x.date}</span>
+          <span class="days-badge">score ${x.score}</span>
+        </div>
+      </div>
+      <div class="deal-badges">
+        <span class="badge ${stageBadge[x.stage]||'badge-teal'}">${stageLabel[x.stage]||x.stage}</span>
+        <span class="badge" style="background:${scoreColor(x.score)}22;color:${scoreColor(x.score)}">${x.score}/100</span>
+        ${x.pct?`<span class="badge badge-teal">${x.pct}</span>`:''}
+      </div>
+    </div>
+    <div class="score-bar"><div class="score-fill" style="width:${x.score}%;background:${scoreColor(x.score)}"></div></div>
+    <div class="expand-area" id="ea-${x.id}">
+      <div class="expand-inner">
+        <div class="ei-box"><div class="ei-lbl">Primary pain</div><div class="ei-val">${hl(x.pain,t)||'—'}</div></div>
+        <div class="ei-box"><div class="ei-lbl">Buying signal</div><div class="ei-val">${hl(x.signal,t)||'—'}</div></div>
+        <div class="ei-box"><div class="ei-lbl">Risk factors</div><div class="ei-val">${hl(x.risk,t)||'—'}</div></div>
+        <div class="ei-box"><div class="ei-lbl">Next step</div><div class="ei-val">${hl(x.next,t)||'—'}</div></div>
+      </div>
+      ${x.quote?`<div class="sentiment-quote">${hl(x.quote,t)}</div>`:''}
+      ${x.url&&x.url!=='#'?`<a class="expand-link" href="${x.url}" target="_blank">↗ Open call in tldv</a>`:''}
+    </div>
+  </div>`;
+}
+
+function renderDeals(){
+  const d=getDeals();
+  const t=searchTerm;
+  document.getElementById('deal-count').textContent=`${d.length} of ${DEALS.length} deals`;
+  if(!d.length){
+    document.getElementById('deal-list').innerHTML='<div style="padding:2rem;text-align:center;color:var(--muted);font-size:13px">No deals match this filter.</div>';
+    return;
+  }
+  const visible=d.slice(0,visibleCount);
+  const remaining=d.length-visibleCount;
+  const showMoreBtn=remaining>0?`
+    <div style="text-align:center;padding:1.25rem 0">
+      <button onclick="showMore()" style="font-size:12px;padding:7px 20px;border-radius:7px;border:1px solid var(--border2);background:var(--s2);color:var(--text);cursor:pointer;font-family:inherit">
+        Show ${Math.min(remaining,PAGE_SIZE)} more <span style="color:var(--muted)">(${remaining} remaining)</span>
+      </button>
+    </div>`:'';
+  document.getElementById('deal-list').innerHTML=visible.map(x=>dealCard(x,t)).join('')+showMoreBtn;
+}
+
+function showMore(){
+  visibleCount+=PAGE_SIZE;
+  renderDeals();
+}
+
+function toggleDeal(id){const ea=document.getElementById('ea-'+id);if(ea)ea.classList.toggle('open');}
+
+function filterDeals(el,val){
+  if(el){document.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));el.classList.add('on');}
+  currentFilter=val;visibleCount=PAGE_SIZE;renderDeals();
+}
+function handleSort(val){currentSort=val;visibleCount=PAGE_SIZE;renderDeals();}
+function handleSearch(val){
+  searchTerm=val;
+  currentFilter='all';
+  visibleCount=PAGE_SIZE;
+  document.querySelectorAll('.pill').forEach(p=>p.classList.remove('on'));
+  document.querySelector('.pill')?.classList.add('on');
+  renderDeals();
+}
+function navTo(id,el){
+  const target=document.getElementById(id);
+  if(target)target.scrollIntoView({behavior:'smooth'});
+  if(el){document.querySelectorAll('.nav-link').forEach(b=>b.classList.remove('active'));el.classList.add('active');}
+}
+
+window.addEventListener('scroll',()=>{
+  const sections=['hero','pyramid','deals','reps','insights','sentiment'];
+  let current='hero';
+  sections.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<120)current=id;});
+  document.querySelectorAll('.nav-link').forEach(l=>{
+    const fn=l.getAttribute('onclick')||'';
+    l.classList.toggle('active',fn.includes("'"+current+"'"));
+  });
+});
+
+function rebuildAll(){
+  updateKPIs();
+  buildPyramid();
+  buildReps();
+  buildLossAnalysis();
+  buildSentiment();
+  renderDeals();
+}
+
+function fetchDeals(){
+  return fetch(API)
+    .then(r=>r.ok?r.json():null)
+    .then(data=>{
+      if(!data) return;
+      const rows=Array.isArray(data)?data:(Array.isArray(data.rows)?data.rows:(Array.isArray(data.data)?data.data:null));
+      if(!rows||!rows.length) return;
+      DEALS=rows.map(rowToDeal).filter(d=>d.name && !EXCLUDED_REPS.some(x=>d.rep.toLowerCase().includes(x)));
+      rebuildAll();
+      document.getElementById('live-lbl').textContent=DEALS.length+' deals · '+new Date().toLocaleTimeString();
+      document.getElementById('last-updated').textContent='Updated '+new Date().toUTCString();
+    })
+    .catch(err=>{
+      console.error('Fetch error:',err);
+      document.getElementById('live-lbl').textContent='Error loading data';
+      document.getElementById('deal-list').innerHTML='<div style="padding:2rem;text-align:center;color:var(--muted)">Could not load deals. Check the n8n webhook is active.</div>';
+    });
+}
+
+window.addEventListener('load',()=>{
+  fetchDeals();
+  setInterval(fetchDeals,5*60*1000);
+});
+</script>
+</body>
+</html>
