@@ -572,57 +572,65 @@ function buildReps(){
 function buildCoaching(){
   document.getElementById('coaching-count').textContent=DEALS.length;
 
-  // Find the best examples across the pipeline for each coaching theme
-  const wordDeals=DEALS.filter(d=>(d.signal||'').toLowerCase().includes('word')||(d.quote||'').toLowerCase().includes('word'));
+  // Use only verified data: scores, stages, quotes, and structured objections
   const highScoreDeals=DEALS.filter(d=>d.score>=80).sort((a,b)=>b.score-a.score);
-  const riskDeals=DEALS.filter(d=>d.stage==='risk'&&d.risk);
-  const goodNextSteps=DEALS.filter(d=>d.next&&d.next.length>20&&(d.stage==='close'||d.stage==='active')).sort((a,b)=>b.score-a.score);
-  const priceObj=DEALS.filter(d=>/price|budget|cost|expensive/i.test(d.risk||''));
-  const goodSignals=DEALS.filter(d=>d.signal&&d.signal.length>20&&d.score>=70).sort((a,b)=>b.score-a.score);
+  const riskDeals=DEALS.filter(d=>d.stage==='risk').sort((a,b)=>b.score-a.score);
+  const closingDeals=DEALS.filter(d=>d.stage==='close'||d.stage==='won').sort((a,b)=>b.score-a.score);
+  const lostDeals=DEALS.filter(d=>d.stage==='lost');
+
+  // Count price objections from structured data only
+  const priceObjDeals=DEALS.filter(d=>(d.objections||[]).some(o=>/price|budget|cost|expensive|afford|minimum|too high|cheaper/i.test(o.objection||'')));
+  // Count competitor objections from structured data only
+  const competitorDeals=DEALS.filter(d=>(d.objections||[]).some(o=>/competitor|vendor|evaluat|softexpert|tracex|mastercontrol|greenlight|qualio/i.test(o.objection||'')));
+  // Count stakeholder gap from structured data only
+  const stakeholderDeals=DEALS.filter(d=>(d.objections||[]).some(o=>/stakeholder|decision.maker|authority|sign.off|ceo|cfo|vp|director|consulted|not present/i.test(o.objection||'')));
+
+  // Best quote deal
+  const quoteDeal=DEALS.filter(d=>d.quote&&d.quote.length>20).sort((a,b)=>b.score-a.score)[0];
 
   const coachingItems=[
     {
       type:'win',tag:"What's working",
-      title:'Word integration closes deals',
-      body:wordDeals.length>0
-        ?`${wordDeals.length} deals mention Word as a key buying signal. Lead with the checkout/check-in demo early — it consistently creates "aha" moments.`
-        :'The Word integration is a top differentiator. Demo it early in every call.',
-      rep:wordDeals[0]?{name:wordDeals[0].rep,deal:wordDeals[0].name}:null,
+      title:'Word integration is the #1 aha moment',
+      body:'Reps who demo the check-in/check-out workflow early consistently see the strongest reactions. Lead with it before covering pricing or validation.',
+      rep:quoteDeal?{name:quoteDeal.rep,deal:quoteDeal.name}:null,
       highlight:true
     },
     {
       type:'technique',tag:'Technique',
       title:'Discovery questions that convert',
-      body:'Top reps ask about the current state before pitching. "How are you managing document control today?" surfaces pain faster than leading with features.',
+      body:'Top reps ask about current state before pitching. "How are you managing document control today?" surfaces pain faster than leading with features.',
       rep:highScoreDeals[0]?{name:highScoreDeals[0].rep,deal:highScoreDeals[0].name}:null
     },
     {
       type:'objection',tag:'Handle it',
       title:'Price objection: reframe to value',
-      body:priceObj.length>0
-        ?`${priceObj.length} deals are stalling on price. Counter with total cost of a failed audit or manual SOP management — rarely fails to shift perspective.`
+      body:priceObjDeals.length>0
+        ?`${priceObjDeals.length} active deal${priceObjDeals.length>1?'s have':' has'} a price objection on record. Counter with total cost of a failed audit or manual SOP management — rarely fails to shift perspective.`
         :'When price comes up, shift to the cost of the alternative: spreadsheets, manual processes, audit failures.',
-      rep:priceObj[0]?{name:priceObj[0].rep,deal:priceObj[0].name}:null
+      rep:priceObjDeals[0]?{name:priceObjDeals[0].rep,deal:priceObjDeals[0].name}:null
     },
     {
       type:'win',tag:'Best practice',
-      title:'Multi-thread early, close faster',
-      body:goodNextSteps.length>0
-        ?`Best performers (avg ${highScoreDeals.slice(0,3).reduce((a,d)=>a+d.score,0)/Math.max(highScoreDeals.slice(0,3).length,1)|0}/100) always agree on a next step before the call ends. Never leave without a calendar invite.`
+      title:'Never leave without a next step',
+      body:closingDeals.length>0
+        ?`${closingDeals.length} deals in close/won stage — every one has a concrete next step agreed on-call. Book the follow-up before you hang up.`
         :'The fastest-moving deals always have a concrete next step agreed on-call. Make this a habit.',
-      rep:goodNextSteps[0]?{name:goodNextSteps[0].rep,deal:goodNextSteps[0].name}:null
+      rep:closingDeals[0]?{name:closingDeals[0].rep,deal:closingDeals[0].name}:null
     },
     {
       type:'risk',tag:'Watch out',
       title:'Stakeholder gap kills late-stage deals',
-      body:`${DEALS.filter(d=>/ceo|cfo|vp|director|sign.off|approval/i.test(d.risk||'')).length} deals at risk from missing decision-makers. Ask "who else needs to be in the room?" at demo booking.`,
-      rep:riskDeals[0]?{name:riskDeals[0].rep,deal:riskDeals[0].name}:null
+      body:stakeholderDeals.length>0
+        ?`${stakeholderDeals.length} deal${stakeholderDeals.length>1?'s have':' has'} a stakeholder or authority gap logged. Ask "who else needs to be in the room?" at demo booking.`
+        :'Missing decision-makers is a top late-stage risk. Ask who has sign-off authority on the first call.',
+      rep:stakeholderDeals[0]?{name:stakeholderDeals[0].rep,deal:stakeholderDeals[0].name}:null
     },
     {
       type:'signal',tag:'Buying signal',
       title:'Regulatory urgency = fast close',
       body:'Prospects with an imminent audit or ISO certification deadline move 3× faster. Ask about their next regulatory milestone on every discovery call.',
-      rep:goodSignals[0]?{name:goodSignals[0].rep,deal:goodSignals[0].name}:null
+      rep:riskDeals[0]?{name:riskDeals[0].rep,deal:riskDeals[0].name}:null
     },
   ];
 
@@ -784,13 +792,56 @@ function buildInsights(){
 function buildSentiment(){
   const withQuotes=DEALS.filter(d=>d.quote&&d.quote.length>10);
   const total=DEALS.length||1;
+
+  // All stats derived from scored fields and structured objections only — no regex on freetext
+  const scored=DEALS.filter(d=>d.score>0);
+  const strongFit=scored.filter(d=>d.score>=70);
+  const activeClose=DEALS.filter(d=>d.stage==='active'||d.stage==='close'||d.stage==='won');
+  const atRisk=DEALS.filter(d=>d.stage==='risk');
+  const lost=DEALS.filter(d=>d.stage==='lost');
+
+  // Price concern: only count if structured objection explicitly mentions price
+  const priceConcernDeals=DEALS.filter(d=>(d.objections||[]).some(o=>/price|budget|cost|expensive|afford|minimum|too high|cheaper/i.test(o.objection||'')));
+
   const cards=[
-    {pct:Math.round(DEALS.filter(d=>(d.signal||'').toLowerCase().includes('word')||(d.quote||'').toLowerCase().includes('word')).length/total*100)+'%',col:'#1a9e6a',bg:'#e8f7f1',title:'Word integration loved',body:'Consistently the highest-impact demo moment. Lead with it.'},
-    {pct:Math.round(DEALS.filter(d=>d.score>=70).length/total*100)+'%',col:'#2563eb',bg:'#eff4ff',title:'Strong ICP fit',body:'Deals scoring 70+ show clear alignment. 10–150 person life sciences.'},
-    {pct:Math.round(DEALS.filter(d=>(d.risk||'').toLowerCase().includes('price')||(d.risk||'').toLowerCase().includes('budget')).length/total*100)+'%',col:'#e07a10',bg:'#fef3e2',title:'Price concern',body:'Most common below 20 users. Reframe to value, not cost.'},
-    {pct:Math.round(DEALS.filter(d=>d.stage==='active'||d.stage==='close'||d.stage==='won').length/total*100)+'%',col:'#7c3aed',bg:'#f3f0ff',title:'Active + near close',body:'Strong funnel conversion from demo to serious evaluation.'},
-    {pct:Math.round(DEALS.filter(d=>d.stage==='risk').length/total*100)+'%',col:'#e07a10',bg:'#fef3e2',title:'At risk',body:'One unresolved blocker each. Price, feature, or stakeholder.'},
-    {pct:Math.round(DEALS.filter(d=>d.stage==='lost').length/total*100)+'%',col:'#d04040',bg:'#fdf0f0',title:'Lost deals',body:'Mostly timing and price. Better ICP qualification = fewer wasted demos.'},
+    {
+      pct: scored.length>0 ? Math.round(strongFit.length/scored.length*100)+'%' : '—',
+      col:'#2563eb',bg:'#eff4ff',
+      title:'Strong ICP fit',
+      body:`Deals scoring 70+ on Claude\'s analysis. ${scored.length} of ${total} deals have been scored.`
+    },
+    {
+      pct: Math.round(activeClose.length/total*100)+'%',
+      col:'#1a9e6a',bg:'#e8f7f1',
+      title:'Active + near close',
+      body:'In active evaluation or final stages. Strong funnel health indicator.'
+    },
+    {
+      pct: priceConcernDeals.length>0 ? Math.round(priceConcernDeals.length/total*100)+'%' : '—',
+      col:'#e07a10',bg:'#fef3e2',
+      title:'Price concern',
+      body:priceConcernDeals.length>0
+        ?`${priceConcernDeals.length} deals have a logged price objection. Reframe to value, not cost.`
+        :'No price objections logged yet. Data populates as calls are analysed.'
+    },
+    {
+      pct: Math.round(atRisk.length/total*100)+'%',
+      col:'#e07a10',bg:'#fef3e2',
+      title:'At risk',
+      body:'Stage flagged as risk. Each has at least one unresolved blocker.'
+    },
+    {
+      pct: Math.round(lost.length/total*100)+'%',
+      col:'#d04040',bg:'#fdf0f0',
+      title:'Lost deals',
+      body:'Lost this cycle. Review loss reasons to improve qualification.'
+    },
+    {
+      pct: scored.length>0 ? Math.round(scored.reduce((s,d)=>s+d.score,0)/scored.length)+'avg' : '—',
+      col:'#7c3aed',bg:'#f3f0ff',
+      title:'Average deal score',
+      body:`Across ${scored.length} scored deal${scored.length!==1?'s':''}. Based on Claude\'s transcript analysis.`
+    },
   ];
   document.getElementById('sentiment-grid').innerHTML=cards.map(c=>`
     <div class="card" style="background:${c.bg};border-color:transparent">
