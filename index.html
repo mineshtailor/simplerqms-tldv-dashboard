@@ -135,7 +135,7 @@ nav {
 .deal-row-score { font-size: 12px; font-weight: 600; width: 32px; text-align: right; flex-shrink: 0 }
 .deal-row-badge { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0 }
 .expand-area { max-height: 0; overflow: hidden; transition: max-height .3s cubic-bezier(.4,0,.2,1) }
-.expand-area.open { max-height: 500px }
+.expand-area.open { max-height: 70vh; overflow-y: auto }
 .expand-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: .625rem .875rem .75rem }
 .ei-box { background: var(--card); border-radius: 8px; padding: .5rem .75rem; border: 1px solid var(--border) }
 .ei-lbl { font-size: 9px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px }
@@ -181,7 +181,7 @@ nav {
 .insight-chevron { width: 16px; height: 16px; color: var(--muted); flex-shrink: 0; margin-top: 2px; transition: transform .22s }
 .insight-chevron.open { transform: rotate(180deg) }
 .insight-expand { max-height: 0; overflow: hidden; transition: max-height .3s cubic-bezier(.4,0,.2,1) }
-.insight-expand.open { max-height: 600px }
+.insight-expand.open { max-height: 70vh; overflow-y: auto }
 .insight-deal-row {
   display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
   padding: 6px 12px; border-top: 1px solid var(--border); font-size: 11px;
