@@ -656,96 +656,107 @@ function togInsight(id){
 }
 
 function buildInsights(){
-  const objections=[
+  // Theme definitions: classify based on the structured objections array extracted
+  // by Claude from actual transcripts — NOT regex on freetext risk/pain fields.
+  // Each theme has keyword patterns that match against the objection text itself.
+  const themes=[
     {
       id:'price',
       label:'Pricing / budget gap',
       body:'Most common. Minimum spend creates friction under 20 users.',
-      test:d=>/price|budget|cost|expensive|afford|minimum|too high|lower|cheaper/i.test((d.risk||'')+(d.pain||'')+(d.lossReason||'')),
-      getDeals:()=>DEALS.filter(d=>/price|budget|cost|expensive|afford|minimum|too high|lower|cheaper/i.test((d.risk||'')+(d.pain||'')+(d.lossReason||''))),
+      match:ob=>/price|budget|cost|expensive|afford|minimum|too high|lower|cheaper|spend/i.test(ob.objection||''),
     },
     {
       id:'competitor',
       label:'Competitor evaluation',
       body:'Parallel evaluation underway. Win on simplicity + pricing.',
-      test:d=>(d.competitors||'').replace(/^\s*$/,'').length>0||/competitor|master control|greenlight|qualio|softexpert|tracex/i.test((d.risk||'')),
-      getDeals:()=>DEALS.filter(d=>(d.competitors||'').replace(/^\s*$/,'').length>0||/competitor|master control|greenlight|qualio|softexpert|tracex/i.test((d.risk||''))),
+      match:ob=>/competitor|vendor|evaluat|softexpert|tracex|mastercontrol|master control|greenlight|qualio|qt9|other system/i.test(ob.objection||''),
     },
     {
       id:'timing',
       label:'Wrong timing',
       body:'ERP migration, funding round, or product launch blocking decision.',
-      test:d=>/timing|funding|early.stage|erp|launch|wait|not ready|deferred/i.test((d.risk||'')+(d.pain||'')),
-      getDeals:()=>DEALS.filter(d=>/timing|funding|early.stage|erp|launch|wait|not ready|deferred/i.test((d.risk||'')+(d.pain||''))),
+      match:ob=>/timing|wrong time|not ready|wait|defer|erp|launch|funding|too early|too soon/i.test(ob.objection||''),
     },
     {
       id:'stakeholder',
       label:'Stakeholder missing',
       body:'Champion sold but no economic buyer in the room.',
-      test:d=>/ceo|cfo|vp|director|decision.maker|authority|sign.off/i.test((d.risk||'')),
-      getDeals:()=>DEALS.filter(d=>/ceo|cfo|vp|director|decision.maker|authority|sign.off/i.test((d.risk||''))),
+      match:ob=>/stakeholder|decision.maker|authority|sign.off|team align|not present|absent|ceo|cfo|vp|director|champion|consulted/i.test(ob.objection||''),
     },
     {
       id:'feature',
       label:'Missing feature',
       body:'Hierarchical folders, quiz builder, PLM traceability, GitHub workflow.',
-      test:d=>/feature|quiz|folder|hierarch|plm|markdown|github|solidworks/i.test((d.risk||'')+(d.pain||'')+(d.lossReason||'')),
-      getDeals:()=>DEALS.filter(d=>/feature|quiz|folder|hierarch|plm|markdown|github|solidworks/i.test((d.risk||'')+(d.pain||'')+(d.lossReason||''))),
+      match:ob=>/feature|quiz|folder|hierarch|plm|markdown|github|word.based|solidworks|windows|desktop app|integration/i.test(ob.objection||''),
     },
     {
       id:'urgency',
       label:'No regulatory urgency',
       body:'No audit deadline = slow or no decision.',
-      test:d=>/no.*deadline|no.*audit|no.*urgency|nice.to.have|low priority/i.test((d.risk||'')),
-      getDeals:()=>DEALS.filter(d=>/no.*deadline|no.*audit|no.*urgency|nice.to.have|low priority/i.test((d.risk||''))),
+      match:ob=>/urgency|deadline|audit|timeline|decision.*not|no.*decision|slow|priority/i.test(ob.objection||''),
     },
   ];
-  objections.forEach(o=>{o.count=DEALS.filter(o.test).length});
-  objections.sort((a,b)=>b.count-a.count);
 
-  document.getElementById('loss-grid').innerHTML=objections.map(o=>{
-    const matchedDeals = o.getDeals();
-    const dealRows = matchedDeals.map(d=>{
-      // Try to find a matching objection with a timestamp from the structured data
-      let objText = '';
-      let tsLink = '';
-      const objs = d.objections || [];
-      // pick the most relevant objection for this theme
-      const matched = objs.find(ob=>ob && ob.objection && o.test({risk:ob.objection,pain:ob.objection,lossReason:ob.objection}));
-      if(matched){
-        objText = matched.objection;
-        if(matched.timestamp_label && matched.tldv_url){
-          tsLink = `<a class="insight-ts-link" href="${matched.tldv_url}" target="_blank">${matched.timestamp_label} ↗</a>`;
-        } else if(matched.tldv_url){
-          tsLink = `<a class="insight-ts-link" href="${matched.tldv_url}" target="_blank">Open ↗</a>`;
-        }
-      } else {
-        // fallback: show risk snippet
-        objText = (d.risk||'').substring(0,70)+(d.risk&&d.risk.length>70?'…':'');
-        if(d.url&&d.url!=='#'){
+  // Build a map: themeId → array of {deal, objection}
+  // A deal is only included in a theme if it has a structured objection that matches that theme.
+  const themeMatches = {};
+  themes.forEach(t=>{ themeMatches[t.id] = []; });
+
+  DEALS.forEach(d=>{
+    const objs = d.objections || [];
+    if(!objs.length) return;
+    themes.forEach(t=>{
+      const matched = objs.filter(ob=>ob && ob.objection && t.match(ob));
+      matched.forEach(ob=>{
+        themeMatches[t.id].push({deal:d, objection:ob});
+      });
+    });
+  });
+
+  // Count unique deals per theme (not total objections)
+  themes.forEach(t=>{
+    const uniqueDeals = new Set(themeMatches[t.id].map(m=>m.deal.id));
+    t.count = uniqueDeals.size;
+  });
+  themes.sort((a,b)=>b.count-a.count);
+
+  document.getElementById('loss-grid').innerHTML=themes.map(t=>{
+    const matches = themeMatches[t.id];
+    // Dedupe by deal — show each deal once with its most relevant objection
+    const seen = new Set();
+    const dealRows = matches
+      .filter(m=>{ if(seen.has(m.deal.id)) return false; seen.add(m.deal.id); return true; })
+      .map(({deal:d, objection:ob})=>{
+        let tsLink = '';
+        if(ob.timestamp_label && ob.tldv_url){
+          tsLink = `<a class="insight-ts-link" href="${ob.tldv_url}" target="_blank">${ob.timestamp_label} ↗</a>`;
+        } else if(ob.tldv_url && ob.tldv_url !== '#'){
+          tsLink = `<a class="insight-ts-link" href="${ob.tldv_url}" target="_blank">Open ↗</a>`;
+        } else if(d.url && d.url !== '#'){
           tsLink = `<a class="insight-ts-link" href="${d.url}" target="_blank">Open ↗</a>`;
         }
-      }
-      return `<div class="insight-deal-row">
-        <span class="insight-deal-name">${d.name}</span>
-        <span class="insight-deal-obj">${objText}</span>
-        ${tsLink}
-      </div>`;
-    }).join('');
+        const objText = (ob.objection||'').substring(0,80)+(ob.objection&&ob.objection.length>80?'…':'');
+        return `<div class="insight-deal-row">
+          <span class="insight-deal-name">${d.name}</span>
+          <span class="insight-deal-obj">${objText}</span>
+          ${tsLink}
+        </div>`;
+      }).join('');
 
-    const numColor = o.count>5?'#d04040':o.count>2?'#e07a10':'#888';
-    return `<div class="insight-item" onclick="togInsight('${o.id}')">
+    const numColor = t.count>5?'#d04040':t.count>2?'#e07a10':'#888';
+    return `<div class="insight-item" onclick="togInsight('${t.id}')">
       <div class="insight-item-head">
-        <div class="insight-num" style="color:${numColor}">${o.count}</div>
+        <div class="insight-num" style="color:${numColor}">${t.count}</div>
         <div class="insight-text">
-          <div class="insight-title">${o.label}</div>
-          <div class="insight-body">${o.body}</div>
+          <div class="insight-title">${t.label}</div>
+          <div class="insight-body">${t.body}</div>
         </div>
-        <svg id="ichv-${o.id}" class="insight-chevron" viewBox="0 0 20 20" fill="currentColor">
+        <svg id="ichv-${t.id}" class="insight-chevron" viewBox="0 0 20 20" fill="currentColor">
           <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/>
         </svg>
       </div>
-      <div id="iexp-${o.id}" class="insight-expand">
+      <div id="iexp-${t.id}" class="insight-expand">
         <div style="padding:4px 0 6px;background:var(--card2)">
           <div style="padding:4px 12px 6px;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Deals affected — click timestamps to open in tldv</div>
           ${dealRows || '<div style="padding:6px 12px;font-size:11px;color:var(--muted)">No matching deals.</div>'}
