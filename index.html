@@ -462,7 +462,7 @@ function rowToDeal(r){
     pain:d.pain_points||'', signal:d.buying_signals||'',
     risk:d.risks||'', next:d.next_steps||'',
     quote:d.key_quote||'', url:d.tldv_url||'#',
-    lossReason:d.loss_reason||'', competitors:d.sentiment||'',
+    lossReason:d.loss_reason||'',
     objections:(()=>{try{return JSON.parse(d.objections_with_timestamps||'[]');}catch(e){return [];}})()
   };
 }
@@ -773,11 +773,21 @@ function buildInsights(){
     </div>`;
   }).join('');
 
+  // Derive named competitors from real objection/risk text (no dedicated field needed)
+  const COMPETITORS=[
+    ['MasterControl',/master\s*control/i],['Veeva',/veeva|vault\s*qms/i],['Qualio',/qualio/i],
+    ['Greenlight Guru',/greenlight/i],['SoftExpert',/soft\s*expert/i],['TraceX',/trace\s*x/i],
+    ['QT9',/qt-?9/i],['Dot Compliance',/dot\s*compliance/i],['ETQ',/\betq\b/i],
+    ['Intellect',/\bintellect\b/i],['ZenQMS',/zen\s*qms/i],['Arena',/\barena\b/i],
+    ['Ideagen',/ideagen|q-?pulse/i],['Montrium',/montrium/i],['Scilife',/scilife/i],
+    ['AssurX',/assur\s*x/i],['TrackWise',/trackwise|sparta/i],['Aligned Elements',/aligned\s*elements/i],
+    ['Isolocity',/isolocity/i],['Grand Avenue',/grand\s*avenue/i]
+  ];
   const compMap={};
   DEALS.forEach(d=>{
-    if(!d.competitors) return;
-    d.competitors.split(',').map(c=>c.trim()).filter(c=>c.length>0&&!/^(very_positive|positive|neutral|negative|very_negative)$/i.test(c))
-      .forEach(comp=>{if(!compMap[comp])compMap[comp]=[];compMap[comp].push(d)});
+    const hay=[(d.objections||[]).map(o=>o.objection||'').join(' '),d.risk||'',d.next||'',d.pain||'',d.signal||'',d.quote||''].join(' ');
+    const seen={};
+    COMPETITORS.forEach(([name,re])=>{ if(re.test(hay)&&!seen[name]){seen[name]=1;(compMap[name]=compMap[name]||[]).push(d);} });
   });
   const sorted=Object.entries(compMap).filter(([,v])=>v.length>0).sort((a,b)=>b[1].length-a[1].length).slice(0,8);
   document.getElementById('comp-tracker').innerHTML=sorted.length?sorted.map(([comp,deals])=>`
