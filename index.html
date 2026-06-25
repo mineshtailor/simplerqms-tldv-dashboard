@@ -714,11 +714,12 @@ function buildInsights(){
   DEALS.forEach(d=>{
     const objs = d.objections || [];
     if(!objs.length) return;
-    themes.forEach(t=>{
-      const matched = objs.filter(ob=>ob && ob.objection && t.match(ob));
-      matched.forEach(ob=>{
-        themeMatches[t.id].push({deal:d, objection:ob});
-      });
+    objs.forEach(ob=>{
+      if(!ob || !ob.objection) return;
+      // Assign each objection to the FIRST matching theme only — prevents the same
+      // objection (e.g. "price too high vs competitors") being counted in two themes.
+      const t = themes.find(th=>th.match(ob));
+      if(t) themeMatches[t.id].push({deal:d, objection:ob});
     });
   });
 
