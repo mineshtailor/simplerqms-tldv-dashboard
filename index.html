@@ -134,6 +134,7 @@ nav {
 .deal-row-rep { font-size: 11px; color: var(--muted); flex-shrink: 0 }
 .deal-row-score { font-size: 12px; font-weight: 600; width: 32px; text-align: right; flex-shrink: 0 }
 .deal-row-badge { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0 }
+.deal-row-value { font-size: 12px; font-weight: 600; color: var(--text); background: var(--card2); border: 1px solid var(--border); padding: 2px 9px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums }
 .expand-area { max-height: 0; overflow: hidden; transition: max-height .3s cubic-bezier(.4,0,.2,1) }
 .expand-area.open { max-height: 70vh; overflow-y: auto }
 .expand-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: .625rem .875rem .75rem }
@@ -474,6 +475,7 @@ function rowToDeal(r){
     pain:d.pain_points||'', signal:d.buying_signals||'',
     risk:d.risks||'', next:d.next_steps||'',
     quote:d.key_quote||'', url:d.tldv_url||'#',
+    dealValue:(d.deal_value||'').toString().trim(),
     lossReason:d.loss_reason||'',
     objections:(()=>{try{return JSON.parse(d.objections_with_timestamps||'[]');}catch(e){return [];}})()
   };
@@ -836,6 +838,7 @@ function dealCard(x,t){
       <div class="deal-row-name">${hl(x.name,t)}</div>
       <div class="deal-row-rep">${hl(x.rep,t)}</div>
       <div class="deal-row-badge badge-sm ${stageBadgeClass[x.stage]||'b-dim'}">${stageLabel[x.stage]||x.stage}</div>
+      ${x.dealValue?`<div class="deal-row-value">${x.dealValue}</div>`:''}
       <div class="deal-row-score" style="color:${scoreColor(x.score)}">${x.score}</div>
     </div>
     <div class="expand-area" id="ea-${x.id}">
