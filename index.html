@@ -1053,10 +1053,16 @@ function buildPlaybook(){
     const nDeals=new Set(arr.map(m=>m.d.id)).size;
     const resolved=arr.filter(m=>(m.o.status||'')==='resolved').length;
     const id='pbo_'+name.toLowerCase();
-    const rows=arr.slice().sort((a,b)=>(b.d.score||0)-(a.d.score||0)).map(({d,o})=>{
+    const rank=s=>s==='unresolved'?0:(s==='ongoing'||!s)?1:2;
+    const groups=new Map();
+    arr.forEach(({d,o})=>{ if(!groups.has(d.id)) groups.set(d.id,{d,objs:[]}); groups.get(d.id).objs.push(o); });
+    const rows=[...groups.values()].sort((a,b)=>(b.d.score||0)-(a.d.score||0)).map(({d,objs})=>{
+      const o=objs.slice().sort((a,b)=>rank(a.status)-rank(b.status))[0];
+      const more=objs.length-1;
       const ts=(o.timestamp_label&&o.tldv_url)?`<a class="insight-ts-link" href="${o.tldv_url}" target="_blank">${o.timestamp_label} ↗</a>`:(d.url&&d.url!=='#'?`<a class="insight-ts-link" href="${d.url}" target="_blank">Open ↗</a>`:'');
       const ot=(o.objection||'').substring(0,90)+((o.objection||'').length>90?'…':'');
-      return `<div class="insight-deal-row"><span class="insight-deal-name">${d.name}</span><span class="insight-deal-obj">${ot}</span><span class="badge-sm ${sBadge(o.status)}" style="margin-right:6px">${sLabel(o.status)}</span>${ts}</div>`;
+      const moreTag=more>0?`<span class="badge-sm b-dim" style="margin-right:6px">+${more} more</span>`:'';
+      return `<div class="insight-deal-row"><span class="insight-deal-name">${d.name}</span><span class="insight-deal-obj">${ot}</span>${moreTag}<span class="badge-sm ${sBadge(o.status)}" style="margin-right:6px">${sLabel(o.status)}</span>${ts}</div>`;
     }).join('');
     const col=arr.length>10?'#d04040':arr.length>4?'#e07a10':'#888';
     return `<div class="insight-item" onclick="togInsight('${id}')">
