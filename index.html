@@ -244,6 +244,7 @@ footer { text-align: center; color: var(--muted); font-size: 11px; padding: 2rem
     <button class="nav-link" onclick="navTo('deals-section',this)">Deals</button>
     <button class="nav-link" onclick="navTo('reps-section',this)">Reps</button>
     <button class="nav-link" onclick="navTo('coaching-section',this)">Coaching</button>
+    <button class="nav-link" onclick="navTo('playbook-section',this)">Playbook</button>
     <button class="nav-link" onclick="navTo('insights-section',this)">Insights</button>
     <button class="nav-link" onclick="navTo('sentiment-section',this)">Sentiment</button>
 
@@ -349,7 +350,7 @@ footer { text-align: center; color: var(--muted); font-size: 11px; padding: 2rem
 
   <!-- DEALS -->
   <div id="deals-section" style="margin-bottom:12px">
-    <div class="sec-heading">All open deals</div>
+    <div class="sec-heading">All open deals<span id="rep-filter-lbl"></span></div>
     <div class="filter-row">
       <button class="pill-new on" onclick="filterDeals(this,'all')">All</button>
       <button class="pill-new" onclick="filterDeals(this,'close')">Near close</button>
@@ -380,6 +381,7 @@ footer { text-align: center; color: var(--muted); font-size: 11px; padding: 2rem
       <div class="sec-heading">Rep performance</div>
       <div class="card">
         <div id="rep-list"></div>
+        <div id="rep-scorecard"></div>
       </div>
     </div>
 
@@ -391,6 +393,23 @@ footer { text-align: center; color: var(--muted); font-size: 11px; padding: 2rem
           Patterns from <span id="coaching-count">—</span> calls. Learn from what's working.
         </div>
         <div class="coaching-grid" id="coaching-grid"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- PLAYBOOK -->
+  <div id="playbook-section" style="margin-bottom:12px">
+    <div class="sec-heading">Objection &amp; competitor playbook</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.4rem">How we handle objections</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:.75rem;line-height:1.5">Click a theme to see every deal it came up in, whether it was resolved, and the exact moment in the call.</div>
+        <div id="playbook-obj"></div>
+      </div>
+      <div class="card">
+        <div class="card-title" style="margin-bottom:.4rem">Competitor battlecard</div>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:.75rem;line-height:1.5">Which competitors come up, and how those deals are tracking.</div>
+        <div id="playbook-comp"></div>
       </div>
     </div>
   </div>
@@ -431,6 +450,7 @@ let DEALS = [];
 let currentFilter = 'all';
 let currentSort = 'score';
 let searchTerm = '';
+let selectedRep = null;
 
 const stageOrder = {close:0,won:0,active:1,risk:2,demo:3,nurture:4,discovery:5,lost:6};
 const stageBadgeClass = {close:'b-green',won:'b-green',active:'b-blue',risk:'b-amber',lost:'b-red',nurture:'b-purple',demo:'b-teal',discovery:'b-dim'};
@@ -537,6 +557,24 @@ function buildFunnel(){
     </div>`).join('');
 }
 
+const PB_THEMES=[
+  ['Pricing',/price|budget|cost|expensive|afford|minimum|too high|lower|cheaper|spend/i],
+  ['Competitor',/competitor|vendor|evaluat|softexpert|tracex|mastercontrol|master control|greenlight|qualio|qt9|other system/i],
+  ['Timing',/timing|wrong time|not ready|wait|defer|erp|launch|funding|too early|too soon/i],
+  ['Stakeholder',/stakeholder|decision.maker|authority|sign.off|team align|not present|absent|ceo|cfo|vp|director|champion|consulted/i],
+  ['Feature',/feature|quiz|folder|hierarch|plm|markdown|github|word.based|solidworks|windows|desktop app|integration/i],
+  ['Urgency',/urgency|deadline|audit|timeline|decision.*not|no.*decision|slow|priority/i]
+];
+function repStats(deals){
+  const s={total:deals.length,avg:0,close:0,active:0,risk:0,lost:0,nurture:0,demo:0,discovery:0,won:0};
+  let sum=0; deals.forEach(d=>{sum+=d.score||0; if(s[d.stage]!==undefined)s[d.stage]++;});
+  s.avg=deals.length?Math.round(sum/deals.length):0; return s;
+}
+function repThemes(deals){
+  const c={};
+  deals.forEach(d=>(d.objections||[]).forEach(o=>{const t=PB_THEMES.find(([n,re])=>re.test(o.objection||''));if(t)c[t[0]]=(c[t[0]]||0)+1;}));
+  return Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,3);
+}
 function buildReps(){
   const repMap={};
   DEALS.forEach(d=>{
@@ -555,7 +593,8 @@ function buildReps(){
     const col=colors[i%colors.length];
     const initials=r.name.split(' ').map(w=>w[0]).join('').substring(0,2).toUpperCase();
     const topDeal=r.deals.slice().sort((a,b)=>b.score-a.score)[0];
-    return `<div class="rep-item">
+    const selStyle=selectedRep===r.name?'cursor:pointer;background:var(--yellow-light);border-radius:8px':'cursor:pointer';
+    return `<div class="rep-item" style="${selStyle}" onclick="selectRep('${r.name.replace(/'/g,"\\'")}')">
       <div class="rep-av-new" style="background:${col}18;color:${col}">${initials}</div>
       <div style="flex:1;min-width:0">
         <div class="rep-name-new">${r.name}</div>
@@ -567,6 +606,44 @@ function buildReps(){
       <div class="rep-score-pill">${r.avgScore}</div>
     </div>`;
   }).join('');
+  const sc=document.getElementById('rep-scorecard');
+  if(sc){
+    if(!selectedRep){sc.innerHTML='';}
+    else{
+      const rd=DEALS.filter(d=>d.rep===selectedRep);
+      const s=repStats(rd); const themes=repThemes(rd);
+      const chip=(lbl,n,cls)=>`<span class="badge-sm ${cls}" style="margin:2px 4px 2px 0">${lbl} ${n}</span>`;
+      sc.innerHTML=`<div style="margin-top:.75rem;padding-top:.75rem;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+          <div style="font-size:12px;font-weight:600">${selectedRep} · scorecard</div>
+          <a onclick="selectRep('${selectedRep.replace(/'/g,"\\'")}')" style="font-size:11px;color:var(--blue);cursor:pointer">clear ✕</a>
+        </div>
+        <div style="display:flex;gap:16px;margin-bottom:.5rem">
+          <div><div style="font-size:1.3rem;font-weight:600">${s.total}</div><div style="font-size:10px;color:var(--muted)">deals</div></div>
+          <div><div style="font-size:1.3rem;font-weight:600;color:${scoreColor(s.avg)}">${s.avg}</div><div style="font-size:10px;color:var(--muted)">avg score</div></div>
+          <div><div style="font-size:1.3rem;font-weight:600;color:var(--green)">${s.close}</div><div style="font-size:10px;color:var(--muted)">near close</div></div>
+          <div><div style="font-size:1.3rem;font-weight:600;color:var(--red)">${s.risk+s.lost}</div><div style="font-size:10px;color:var(--muted)">risk/lost</div></div>
+        </div>
+        <div style="margin-bottom:.4rem">${chip('Near close',s.close,'b-green')}${chip('Active',s.active,'b-blue')}${chip('At risk',s.risk,'b-amber')}${chip('Nurture',s.nurture,'b-purple')}${chip('Lost',s.lost,'b-red')}</div>
+        ${themes.length?`<div style="font-size:10px;color:var(--muted);margin-bottom:3px">Most common objections</div><div>${themes.map(([n,cc])=>`<span class="badge-sm b-dim" style="margin:2px 4px 2px 0">${n} · ${cc}</span>`).join('')}</div>`:''}
+        <div style="font-size:10px;color:var(--muted);margin-top:.5rem">Deal list below is filtered to ${selectedRep}.</div>
+      </div>`;
+    }
+  }
+  updateRepBanner();
+}
+function updateRepBanner(){
+  const el=document.getElementById('rep-filter-lbl'); if(!el) return;
+  el.innerHTML = selectedRep ? ` <span style="font-weight:400;color:var(--muted)">· ${selectedRep}</span> <a onclick="selectRep('${selectedRep.replace(/'/g,"\\'")}')" style="font-size:11px;color:var(--blue);cursor:pointer">✕</a>` : '';
+}
+function selectRep(name){
+  selectedRep=(selectedRep===name)?null:name;
+  currentFilter='all';
+  document.querySelectorAll('#deals-section .pill-new').forEach(p=>p.classList.remove('on'));
+  document.querySelector('#deals-section .pill-new')?.classList.add('on');
+  visibleCount=PAGE_SIZE;
+  buildReps(); renderDeals();
+  if(selectedRep) document.getElementById('deals-section').scrollIntoView({behavior:'smooth'});
 }
 
 function buildCoaching(){
@@ -875,6 +952,7 @@ function buildSentiment(){
 
 function getDeals(){
   let d=[...DEALS];
+  if(selectedRep) d=d.filter(x=>x.rep===selectedRep);
   if(currentFilter!=='all') d=d.filter(x=>x.stage===currentFilter||(currentFilter==='close'&&x.stage==='won'));
   if(searchTerm) d=d.filter(x=>[x.name,x.rep,x.pain,x.signal,x.next,x.quote].join(' ').toLowerCase().includes(searchTerm.toLowerCase()));
   d.sort((a,b)=>{
@@ -951,7 +1029,7 @@ function navTo(id,el){
 }
 
 window.addEventListener('scroll',()=>{
-  const sections=['hero','deals-section','reps-section','coaching-section','insights-section','sentiment-section'];
+  const sections=['hero','deals-section','reps-section','coaching-section','playbook-section','insights-section','sentiment-section'];
   let current='hero';
   sections.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<100)current=id});
   document.querySelectorAll('.nav-link').forEach(l=>{
@@ -960,8 +1038,69 @@ window.addEventListener('scroll',()=>{
   });
 });
 
+function buildPlaybook(){
+  const themeMatch={}; PB_THEMES.forEach(([n])=>themeMatch[n]=[]);
+  DEALS.forEach(d=>(d.objections||[]).forEach(o=>{
+    if(!o||!o.objection) return;
+    const t=PB_THEMES.find(([n,re])=>re.test(o.objection));
+    if(t) themeMatch[t[0]].push({d,o});
+  }));
+  const sBadge=s=>s==='resolved'?'b-green':s==='unresolved'?'b-red':'b-amber';
+  const sLabel=s=>s==='resolved'?'Resolved':s==='unresolved'?'Open':'Ongoing';
+  const chev=`<svg class="insight-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/></svg>`;
+  const objHtml=PB_THEMES.map(([name])=>{
+    const arr=themeMatch[name]; if(!arr.length) return '';
+    const nDeals=new Set(arr.map(m=>m.d.id)).size;
+    const resolved=arr.filter(m=>(m.o.status||'')==='resolved').length;
+    const id='pbo_'+name.toLowerCase();
+    const rows=arr.slice().sort((a,b)=>(b.d.score||0)-(a.d.score||0)).map(({d,o})=>{
+      const ts=(o.timestamp_label&&o.tldv_url)?`<a class="insight-ts-link" href="${o.tldv_url}" target="_blank">${o.timestamp_label} ↗</a>`:(d.url&&d.url!=='#'?`<a class="insight-ts-link" href="${d.url}" target="_blank">Open ↗</a>`:'');
+      const ot=(o.objection||'').substring(0,90)+((o.objection||'').length>90?'…':'');
+      return `<div class="insight-deal-row"><span class="insight-deal-name">${d.name}</span><span class="insight-deal-obj">${ot}</span><span class="badge-sm ${sBadge(o.status)}" style="margin-right:6px">${sLabel(o.status)}</span>${ts}</div>`;
+    }).join('');
+    const col=arr.length>10?'#d04040':arr.length>4?'#e07a10':'#888';
+    return `<div class="insight-item" onclick="togInsight('${id}')">
+      <div class="insight-item-head">
+        <div class="insight-num" style="color:${col}">${nDeals}</div>
+        <div class="insight-text"><div class="insight-title">${name}</div><div class="insight-body">${arr.length} objection${arr.length!==1?'s':''} · ${resolved} resolved · ${arr.length-resolved} open/ongoing</div></div>
+        <svg id="ichv-${id}" class="insight-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/></svg>
+      </div>
+      <div id="iexp-${id}" class="insight-expand"><div style="padding:4px 0 6px;background:var(--card2)">${rows}</div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('playbook-obj').innerHTML=objHtml||'<div style="font-size:11px;color:var(--muted)">No objections recorded yet.</div>';
+
+  const COMP=[['MasterControl',/master\s*control/i],['Veeva',/veeva|vault\s*qms/i],['Qualio',/qualio/i],['Greenlight Guru',/greenlight/i],['SoftExpert',/soft\s*expert/i],['TraceX',/trace\s*x/i],['QT9',/qt-?9/i],['Dot Compliance',/dot\s*compliance/i],['ETQ',/\betq\b/i],['Intellect',/\bintellect\b/i],['ZenQMS',/zen\s*qms/i],['Arena',/\barena\b/i],['Ideagen',/ideagen|q-?pulse/i],['Montrium',/montrium/i],['Scilife',/scilife/i],['AssurX',/assur\s*x/i],['TrackWise',/trackwise|sparta/i],['Aligned Elements',/aligned\s*elements/i],['Isolocity',/isolocity/i],['Grand Avenue',/grand\s*avenue/i]];
+  const compMap={};
+  DEALS.forEach(d=>{
+    const hay=[(d.objections||[]).map(o=>o.objection||'').join(' '),d.risk||'',d.next||'',d.pain||'',d.signal||'',d.quote||''].join(' ');
+    const seen={};
+    COMP.forEach(([n,re])=>{if(re.test(hay)&&!seen[n]){seen[n]=1;(compMap[n]=compMap[n]||[]).push(d);}});
+  });
+  const compHtml=Object.entries(compMap).sort((a,b)=>b[1].length-a[1].length).map(([name,deals])=>{
+    const id='pbc_'+name.toLowerCase().replace(/[^a-z0-9]/g,'');
+    const lost=deals.filter(d=>d.stage==='lost').length;
+    const risk=deals.filter(d=>d.stage==='risk').length;
+    const adv=deals.filter(d=>d.stage==='close'||d.stage==='won').length;
+    const rows=deals.slice().sort((a,b)=>(b.score||0)-(a.score||0)).map(d=>{
+      const ts=d.url&&d.url!=='#'?`<a class="insight-ts-link" href="${d.url}" target="_blank">Open ↗</a>`:'';
+      return `<div class="insight-deal-row"><span class="insight-deal-name">${d.name}</span><span class="insight-deal-obj">${d.rep||''}</span><span class="badge-sm ${stageBadgeClass[d.stage]||'b-dim'}" style="margin-right:6px">${stageLabel[d.stage]||d.stage}</span><span style="font-size:11px;font-weight:600;color:${scoreColor(d.score)};margin-right:6px">${d.score}</span>${ts}</div>`;
+    }).join('');
+    const col=deals.length>4?'#d04040':deals.length>2?'#e07a10':'#888';
+    return `<div class="insight-item" onclick="togInsight('${id}')">
+      <div class="insight-item-head">
+        <div class="insight-num" style="color:${col}">${deals.length}</div>
+        <div class="insight-text"><div class="insight-title">${name}</div><div class="insight-body">${adv} advancing · ${risk} at risk · ${lost} lost</div></div>
+        <svg id="ichv-${id}" class="insight-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/></svg>
+      </div>
+      <div id="iexp-${id}" class="insight-expand"><div style="padding:4px 0 6px;background:var(--card2)">${rows}</div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('playbook-comp').innerHTML=compHtml||'<div style="font-size:11px;color:var(--muted)">No competitor mentions found.</div>';
+}
+
 function rebuildAll(){
-  updateStrip();buildFunnel();buildReps();buildCoaching();buildInsights();buildSentiment();renderDeals();
+  updateStrip();buildFunnel();buildReps();buildCoaching();buildInsights();buildPlaybook();buildSentiment();renderDeals();
 }
 
 function fetchDeals(){
