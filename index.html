@@ -245,7 +245,6 @@ footer { text-align: center; color: var(--muted); font-size: 11px; padding: 2rem
     <button class="nav-link" onclick="navTo('reps-section',this)">Reps</button>
     <button class="nav-link" onclick="navTo('coaching-section',this)">Coaching</button>
     <button class="nav-link" onclick="navTo('playbook-section',this)">Playbook</button>
-    <button class="nav-link" onclick="navTo('insights-section',this)">Insights</button>
     <button class="nav-link" onclick="navTo('sentiment-section',this)">Sentiment</button>
 
   </div>
@@ -413,22 +412,6 @@ footer { text-align: center; color: var(--muted); font-size: 11px; padding: 2rem
       </div>
     </div>
   </div>
-
-  <!-- INSIGHTS -->
-  <div id="insights-section" style="margin-bottom:12px">
-    <div class="sec-heading">Objections &amp; deal risks</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.875rem">Top objections</div>
-        <div class="insight-row" id="loss-grid"></div>
-      </div>
-      <div class="card">
-        <div class="card-title" style="margin-bottom:.875rem">Competitor tracker</div>
-        <div id="comp-tracker"></div>
-      </div>
-    </div>
-  </div>
-
 
   <!-- SENTIMENT -->
   <div id="sentiment-section">
@@ -740,143 +723,6 @@ function togInsight(id){
   if(chv) chv.classList.toggle('open', !open);
 }
 
-function buildInsights(){
-  // Theme definitions: classify based on the structured objections array extracted
-  // by Claude from actual transcripts — NOT regex on freetext risk/pain fields.
-  // Each theme has keyword patterns that match against the objection text itself.
-  const themes=[
-    {
-      id:'price',
-      label:'Pricing / budget gap',
-      body:'Most common. Minimum spend creates friction under 20 users.',
-      match:ob=>/price|budget|cost|expensive|afford|minimum|too high|lower|cheaper|spend/i.test(ob.objection||''),
-    },
-    {
-      id:'competitor',
-      label:'Competitor evaluation',
-      body:'Parallel evaluation underway. Win on simplicity + pricing.',
-      match:ob=>/competitor|vendor|evaluat|softexpert|tracex|mastercontrol|master control|greenlight|qualio|qt9|other system/i.test(ob.objection||''),
-    },
-    {
-      id:'timing',
-      label:'Wrong timing',
-      body:'ERP migration, funding round, or product launch blocking decision.',
-      match:ob=>/timing|wrong time|not ready|wait|defer|erp|launch|funding|too early|too soon/i.test(ob.objection||''),
-    },
-    {
-      id:'stakeholder',
-      label:'Stakeholder missing',
-      body:'Champion sold but no economic buyer in the room.',
-      match:ob=>/stakeholder|decision.maker|authority|sign.off|team align|not present|absent|ceo|cfo|vp|director|champion|consulted/i.test(ob.objection||''),
-    },
-    {
-      id:'feature',
-      label:'Missing feature',
-      body:'Hierarchical folders, quiz builder, PLM traceability, GitHub workflow.',
-      match:ob=>/feature|quiz|folder|hierarch|plm|markdown|github|word.based|solidworks|windows|desktop app|integration/i.test(ob.objection||''),
-    },
-    {
-      id:'urgency',
-      label:'No regulatory urgency',
-      body:'No audit deadline = slow or no decision.',
-      match:ob=>/urgency|deadline|audit|timeline|decision.*not|no.*decision|slow|priority/i.test(ob.objection||''),
-    },
-  ];
-
-  // Build a map: themeId → array of {deal, objection}
-  // A deal is only included in a theme if it has a structured objection that matches that theme.
-  const themeMatches = {};
-  themes.forEach(t=>{ themeMatches[t.id] = []; });
-
-  DEALS.forEach(d=>{
-    const objs = d.objections || [];
-    if(!objs.length) return;
-    objs.forEach(ob=>{
-      if(!ob || !ob.objection) return;
-      // Assign each objection to the FIRST matching theme only — prevents the same
-      // objection (e.g. "price too high vs competitors") being counted in two themes.
-      const t = themes.find(th=>th.match(ob));
-      if(t) themeMatches[t.id].push({deal:d, objection:ob});
-    });
-  });
-
-  // Count unique deals per theme (not total objections)
-  themes.forEach(t=>{
-    const uniqueDeals = new Set(themeMatches[t.id].map(m=>m.deal.id));
-    t.count = uniqueDeals.size;
-  });
-  themes.sort((a,b)=>b.count-a.count);
-
-  document.getElementById('loss-grid').innerHTML=themes.map(t=>{
-    const matches = themeMatches[t.id];
-    // Dedupe by deal — show each deal once with its most relevant objection
-    const seen = new Set();
-    const dealRows = matches
-      .filter(m=>{ if(seen.has(m.deal.id)) return false; seen.add(m.deal.id); return true; })
-      .map(({deal:d, objection:ob})=>{
-        let tsLink = '';
-        if(ob.timestamp_label && ob.tldv_url){
-          tsLink = `<a class="insight-ts-link" href="${ob.tldv_url}" target="_blank">${ob.timestamp_label} ↗</a>`;
-        } else if(ob.tldv_url && ob.tldv_url !== '#'){
-          tsLink = `<a class="insight-ts-link" href="${ob.tldv_url}" target="_blank">Open ↗</a>`;
-        } else if(d.url && d.url !== '#'){
-          tsLink = `<a class="insight-ts-link" href="${d.url}" target="_blank">Open ↗</a>`;
-        }
-        const objText = (ob.objection||'').substring(0,80)+(ob.objection&&ob.objection.length>80?'…':'');
-        return `<div class="insight-deal-row">
-          <span class="insight-deal-name">${d.name}</span>
-          <span class="insight-deal-obj">${objText}</span>
-          ${tsLink}
-        </div>`;
-      }).join('');
-
-    const numColor = t.count>5?'#d04040':t.count>2?'#e07a10':'#888';
-    return `<div class="insight-item" onclick="togInsight('${t.id}')">
-      <div class="insight-item-head">
-        <div class="insight-num" style="color:${numColor}">${t.count}</div>
-        <div class="insight-text">
-          <div class="insight-title">${t.label}</div>
-          <div class="insight-body">${t.body}</div>
-        </div>
-        <svg id="ichv-${t.id}" class="insight-chevron" viewBox="0 0 20 20" fill="currentColor">
-          <path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.17l3.71-3.94a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z"/>
-        </svg>
-      </div>
-      <div id="iexp-${t.id}" class="insight-expand">
-        <div style="padding:4px 0 6px;background:var(--card2)">
-          <div style="padding:4px 12px 6px;font-size:9px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)">Deals affected — click timestamps to open in tldv</div>
-          ${dealRows || '<div style="padding:6px 12px;font-size:11px;color:var(--muted)">No matching deals.</div>'}
-        </div>
-      </div>
-    </div>`;
-  }).join('');
-
-  // Derive named competitors from real objection/risk text (no dedicated field needed)
-  const COMPETITORS=[
-    ['MasterControl',/master\s*control/i],['Veeva',/veeva|vault\s*qms/i],['Qualio',/qualio/i],
-    ['Greenlight Guru',/greenlight/i],['SoftExpert',/soft\s*expert/i],['TraceX',/trace\s*x/i],
-    ['QT9',/qt-?9/i],['Dot Compliance',/dot\s*compliance/i],['ETQ',/\betq\b/i],
-    ['Intellect',/\bintellect\b/i],['ZenQMS',/zen\s*qms/i],['Arena',/\barena\b/i],
-    ['Ideagen',/ideagen|q-?pulse/i],['Montrium',/montrium/i],['Scilife',/scilife/i],
-    ['AssurX',/assur\s*x/i],['TrackWise',/trackwise|sparta/i],['Aligned Elements',/aligned\s*elements/i],
-    ['Isolocity',/isolocity/i],['Grand Avenue',/grand\s*avenue/i]
-  ];
-  const compMap={};
-  DEALS.forEach(d=>{
-    const hay=[(d.objections||[]).map(o=>o.objection||'').join(' '),d.risk||'',d.next||'',d.pain||'',d.signal||'',d.quote||''].join(' ');
-    const seen={};
-    COMPETITORS.forEach(([name,re])=>{ if(re.test(hay)&&!seen[name]){seen[name]=1;(compMap[name]=compMap[name]||[]).push(d);} });
-  });
-  const sorted=Object.entries(compMap).filter(([,v])=>v.length>0).sort((a,b)=>b[1].length-a[1].length).slice(0,8);
-  document.getElementById('comp-tracker').innerHTML=sorted.length?sorted.map(([comp,deals])=>`
-    <div class="comp-item">
-      <div class="comp-item-head">${comp}<span class="comp-badge-n">${deals.length}</span></div>
-      ${deals.slice(0,3).map(d=>`<div class="comp-deal"><span class="comp-deal-name">${d.name}</span><span class="badge-sm ${stageBadgeClass[d.stage]||'b-dim'}">${stageLabel[d.stage]||d.stage}</span><span style="font-size:10px;font-weight:600;color:${scoreColor(d.score)}">${d.score}</span></div>`).join('')}
-    </div>`).join(''):`<div style="color:var(--muted);font-size:12px">No competitor mentions found.</div>`;
-}
-
-
-
 function buildSentiment(){
   const withQuotes=DEALS.filter(d=>d.quote&&d.quote.length>10);
   const total=DEALS.length||1;
@@ -1029,7 +875,7 @@ function navTo(id,el){
 }
 
 window.addEventListener('scroll',()=>{
-  const sections=['hero','deals-section','reps-section','coaching-section','playbook-section','insights-section','sentiment-section'];
+  const sections=['hero','deals-section','reps-section','coaching-section','playbook-section','sentiment-section'];
   let current='hero';
   sections.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<100)current=id});
   document.querySelectorAll('.nav-link').forEach(l=>{
@@ -1106,7 +952,7 @@ function buildPlaybook(){
 }
 
 function rebuildAll(){
-  updateStrip();buildFunnel();buildReps();buildCoaching();buildInsights();buildPlaybook();buildSentiment();renderDeals();
+  updateStrip();buildFunnel();buildReps();buildCoaching();buildPlaybook();buildSentiment();renderDeals();
 }
 
 function fetchDeals(){
