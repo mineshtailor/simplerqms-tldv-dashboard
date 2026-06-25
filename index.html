@@ -883,7 +883,7 @@ function buildSentiment(){
 
   // All stats derived from scored fields and structured objections only — no regex on freetext
   const scored=DEALS.filter(d=>d.score>0);
-  const strongFit=scored.filter(d=>d.score>=70);
+  const highLikelihood=scored.filter(d=>d.score>=70);
   const activeClose=DEALS.filter(d=>d.stage==='active'||d.stage==='close'||d.stage==='won');
   const atRisk=DEALS.filter(d=>d.stage==='risk');
   const lost=DEALS.filter(d=>d.stage==='lost');
@@ -893,10 +893,10 @@ function buildSentiment(){
 
   const cards=[
     {
-      pct: scored.length>0 ? Math.round(strongFit.length/scored.length*100)+'%' : '—',
+      pct: scored.length>0 ? Math.round(highLikelihood.length/scored.length*100)+'%' : '—',
       col:'#2563eb',bg:'#eff4ff',
-      title:'Strong ICP fit',
-      body:`Deals scoring 70+ on Claude\'s analysis. ${scored.length} of ${total} deals have been scored.`
+      title:'High-likelihood deals',
+      body:`Scoring 70+ on the rubric — strong intent through to closing. ${scored.length} of ${total} deals scored.`
     },
     {
       pct: Math.round(activeClose.length/total*100)+'%',
