@@ -165,6 +165,12 @@ nav {
 .cc-rep { font-size: 10px; font-weight: 600; margin-top: 6px; color: var(--muted) }
 .cc-rep span { color: var(--text) }
 .coaching-card.highlight .cc-rep span { color: #fff }
+.cc-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; margin: .4rem 0 .55rem }
+.cc-bar-fill { height: 100%; border-radius: 3px; transition: width .8s ease }
+.cc-tip { margin-top: .5rem; font-size: 11.5px; color: var(--muted); line-height: 1.5 }
+.coaching-card.highlight .cc-tip { color: rgba(255,255,255,.6) }
+.cc-ex { display: inline-block; margin-top: .55rem; font-size: 11px; color: #2563eb; text-decoration: none; font-style: italic }
+.cc-ex:hover { text-decoration: underline }
 .cc-quote { font-style: italic; font-size: 11px; line-height: 1.6; margin-bottom: 6px; color: inherit }
 
 /* INSIGHT CARDS */
@@ -641,88 +647,54 @@ function selectRep(name){
 }
 
 function buildCoaching(){
+  const grid=document.getElementById('coaching-grid');
   document.getElementById('coaching-count').textContent=DEALS.length;
-
-  // Use only verified data: scores, stages, quotes, and structured objections
-  const highScoreDeals=DEALS.filter(d=>d.score>=80).sort((a,b)=>b.score-a.score);
-  const riskDeals=DEALS.filter(d=>d.stage==='risk').sort((a,b)=>b.score-a.score);
-  const closingDeals=DEALS.filter(d=>d.stage==='close'||d.stage==='won').sort((a,b)=>b.score-a.score);
-  const lostDeals=DEALS.filter(d=>d.stage==='lost');
-
-  // Count price objections from structured data only
-  const priceObjDeals=DEALS.filter(d=>(d.objections||[]).some(o=>/price|budget|cost|expensive|afford|minimum|too high|cheaper/i.test(o.objection||'')));
-  // Count competitor objections from structured data only
-  const competitorDeals=DEALS.filter(d=>(d.objections||[]).some(o=>/competitor|vendor|evaluat|softexpert|tracex|mastercontrol|greenlight|qualio/i.test(o.objection||'')));
-  // Count stakeholder gap from structured data only
-  const stakeholderDeals=DEALS.filter(d=>(d.objections||[]).some(o=>/stakeholder|decision.maker|authority|sign.off|ceo|cfo|vp|director|consulted|not present/i.test(o.objection||'')));
-
-  // Best quote deal
-  const quoteDeal=DEALS.filter(d=>d.quote&&d.quote.length>20).sort((a,b)=>b.score-a.score)[0];
-
-  const coachingItems=[
-    {
-      type:'win',tag:"What's working",
-      title:'Word integration is the #1 aha moment',
-      body:'Reps who demo the check-in/check-out workflow early consistently see the strongest reactions. Lead with it before covering pricing or validation.',
-      rep:quoteDeal?{name:quoteDeal.rep,deal:quoteDeal.name}:null,
-      highlight:true
-    },
-    {
-      type:'technique',tag:'Technique',
-      title:'Discovery questions that convert',
-      body:'Top reps ask about current state before pitching. "How are you managing document control today?" surfaces pain faster than leading with features.',
-      rep:highScoreDeals[0]?{name:highScoreDeals[0].rep,deal:highScoreDeals[0].name}:null
-    },
-    {
-      type:'objection',tag:'Handle it',
-      title:'Price objection: reframe to value',
-      body:priceObjDeals.length>0
-        ?`${priceObjDeals.length} active deal${priceObjDeals.length>1?'s have':' has'} a price objection on record. Counter with total cost of a failed audit or manual SOP management — rarely fails to shift perspective.`
-        :'When price comes up, shift to the cost of the alternative: spreadsheets, manual processes, audit failures.',
-      rep:priceObjDeals[0]?{name:priceObjDeals[0].rep,deal:priceObjDeals[0].name}:null
-    },
-    {
-      type:'win',tag:'Best practice',
-      title:'Never leave without a next step',
-      body:closingDeals.length>0
-        ?`${closingDeals.length} deals in close/won stage — every one has a concrete next step agreed on-call. Book the follow-up before you hang up.`
-        :'The fastest-moving deals always have a concrete next step agreed on-call. Make this a habit.',
-      rep:closingDeals[0]?{name:closingDeals[0].rep,deal:closingDeals[0].name}:null
-    },
-    {
-      type:'risk',tag:'Watch out',
-      title:'Stakeholder gap kills late-stage deals',
-      body:stakeholderDeals.length>0
-        ?`${stakeholderDeals.length} deal${stakeholderDeals.length>1?'s have':' has'} a stakeholder or authority gap logged. Ask "who else needs to be in the room?" at demo booking.`
-        :'Missing decision-makers is a top late-stage risk. Ask who has sign-off authority on the first call.',
-      rep:stakeholderDeals[0]?{name:stakeholderDeals[0].rep,deal:stakeholderDeals[0].name}:null
-    },
-    {
-      type:'signal',tag:'Buying signal',
-      title:'Regulatory urgency = fast close',
-      body:'Prospects with an imminent audit or ISO certification deadline move 3× faster. Ask about their next regulatory milestone on every discovery call.',
-      rep:riskDeals[0]?{name:riskDeals[0].rep,deal:riskDeals[0].name}:null
-    },
-  ];
-
-  const tagColors={
-    'What\'s working':'background:#e8f7f1;color:#1a9e6a',
-    'Technique':'background:#eff4ff;color:#2563eb',
-    'Handle it':'background:#fef3e2;color:#e07a10',
-    'Best practice':'background:#f3f0ff;color:#7c3aed',
-    'Watch out':'background:#fdf0f0;color:#d04040',
-    'Buying signal':'background:#fef9e0;color:#b08000',
+  const themeOf=t=>{const m=PB_THEMES.find(([n,re])=>re.test(t||''));return m?m[0]:null;};
+  const TIPS={
+    Pricing:'Reframe to cost-of-inaction — failed audit, manual SOP hours — and pin the budget number explicitly instead of leaving price "open".',
+    Competitor:'Pin down exactly what the competitor does better, then book a head-to-head on that one capability before agreeing a next step.',
+    Stakeholder:'Ask "who else signs off?" at demo booking and get the economic buyer into the next call — don\u2019t advance the deal without them.',
+    Feature:'Separate must-have from nice-to-have, then confirm a roadmap date or show a live workaround. Never leave a gap "unconfirmed".',
+    Timing:'Anchor urgency to a dated external event (audit, MDR, go-live). With no deadline, set a concrete follow-up trigger before hanging up.',
+    Urgency:'Manufacture a timeline: ask what breaks if nothing changes by a date, and attach a milestone to the next step.'
   };
-
-  document.getElementById('coaching-grid').innerHTML=coachingItems.map(item=>`
-    <div class="coaching-card${item.highlight?' highlight':''}">
-      <div class="cc-head">
-        <div class="cc-title">${item.title}</div>
-        <div class="cc-tag" style="${item.highlight?'background:rgba(255,255,255,.15);color:rgba(255,255,255,.8)':(tagColors[item.tag]||'')}">${item.tag}</div>
-      </div>
-      <div class="cc-body">${item.body}</div>
-      ${item.rep?`<div class="cc-rep">Example: <span>${item.rep.deal}</span> · ${item.rep.name}</div>`:''}
-    </div>`).join('');
+  const isLost=s=>s==='lost'||s==='risk';
+  const T={};
+  PB_THEMES.forEach(([n])=>T[n]={inst:0,resolved:0,open:0,deals:new Set(),lostDeals:new Set(),example:null,openExample:null});
+  let totalInst=0,totalRes=0;
+  DEALS.forEach(d=>{
+    (d.objections||[]).forEach(o=>{
+      const th=themeOf(o.objection); if(!th) return;
+      const st=(o.status||'').toLowerCase();
+      const rec=T[th]; rec.inst++; totalInst++;
+      if(st==='resolved'){rec.resolved++; totalRes++; if(!rec.example&&o.tldv_url)rec.example={deal:d.name,url:o.tldv_url,ts:o.timestamp_label,txt:o.objection};}
+      else {rec.open++; if(!rec.openExample&&isLost(d.stage)&&o.tldv_url)rec.openExample={deal:d.name,url:o.tldv_url,ts:o.timestamp_label,txt:o.objection};}
+      rec.deals.add(d.name); if(isLost(d.stage))rec.lostDeals.add(d.name);
+    });
+  });
+  const rows=PB_THEMES.map(([n])=>{const r=T[n];return{name:n,inst:r.inst,resolved:r.resolved,open:r.open,rate:r.inst?Math.round(100*r.resolved/r.inst):0,deals:r.deals.size,lost:r.lostDeals.size,example:r.example,openExample:r.openExample};}).filter(r=>r.inst>0);
+  const overall=totalInst?Math.round(100*totalRes/totalInst):0;
+  const gaps=rows.slice().sort((a,b)=>(a.rate-b.rate)||(b.lost-a.lost));
+  const barColor=r=>r>=60?'#1a9e6a':r>=40?'#e07a10':'#d04040';
+  const clip=(s,n)=>{s=String(s||'');return s.length>n?s.slice(0,n).trim()+'\u2026':s;};
+  function card(r){
+    const lostPct=r.deals?Math.round(100*r.lost/r.deals):0;
+    const tagStyle=r.rate>=60?'background:#e8f7f1;color:#1a9e6a':r.rate>=40?'background:#fef3e2;color:#e07a10':'background:#fdf0f0;color:#d04040';
+    const ex=r.openExample||r.example;
+    const exLabel=r.openExample?'Open in a lost/at-risk deal':'Handled well';
+    const exLine=ex?`<a class="cc-ex" href="${ex.url}" target="_blank">${exLabel}: \u201c${clip(ex.txt,68)}\u201d ${ex.ts||''} \u2197</a>`:'';
+    return `<div class="coaching-card">
+      <div class="cc-head"><div class="cc-title">${r.name} objections</div><div class="cc-tag" style="${tagStyle}">${r.rate}% resolved</div></div>
+      <div class="cc-bar"><div class="cc-bar-fill" style="width:${r.rate}%;background:${barColor(r.rate)}"></div></div>
+      <div class="cc-body">${r.resolved} of ${r.inst} resolved on-call across ${r.deals} deal${r.deals!==1?'s':''}. Shows up in ${r.lost} at-risk/lost deal${r.lost!==1?'s':''}${r.deals?` (${lostPct}% of deals with this objection)`:''}.<div class="cc-tip">${TIPS[r.name]||''}</div></div>
+      ${exLine}
+    </div>`;
+  }
+  const head=`<div class="coaching-card highlight" style="grid-column:1/-1">
+    <div class="cc-head"><div class="cc-title">Objection handling \u00b7 whole team</div><div class="cc-tag">${overall}% resolved on-call</div></div>
+    <div class="cc-body">${totalInst} objections logged across ${DEALS.length} calls. Ranked by lowest resolve rate \u2014 biggest coaching gaps first. Each card links to a real moment in tldv.</div>
+  </div>`;
+  grid.innerHTML=head+gaps.map(card).join('');
 }
 
 function togInsight(id){
