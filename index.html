@@ -135,6 +135,12 @@ nav {
 .deal-row-score { font-size: 12px; font-weight: 600; width: 32px; text-align: right; flex-shrink: 0 }
 .deal-row-badge { font-size: 10px; font-weight: 500; padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0 }
 .deal-row-value { font-size: 12px; font-weight: 600; color: var(--text); background: var(--card2); border: 1px solid var(--border); padding: 2px 9px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; font-variant-numeric: tabular-nums }
+.deal-row-pipedrive { display: flex; align-items: center; gap: 5px; flex-shrink: 0 }
+.deal-row-pdstage { font-size: 10px; color: var(--muted); white-space: nowrap; font-weight: 500 }
+.deal-row-pdstatus { font-size: 9px; font-weight: 600; padding: 2px 7px; border-radius: 20px; white-space: nowrap; text-transform: uppercase; letter-spacing: .04em }
+.pd-open { background: var(--green-bg); color: var(--green) }
+.pd-won  { background: #e0f7e9; color: #1a7a45 }
+.pd-lost { background: var(--red-bg); color: var(--red) }
 .expand-area { max-height: 0; overflow: hidden; transition: max-height .3s cubic-bezier(.4,0,.2,1) }
 .expand-area.open { max-height: 70vh; overflow-y: auto }
 .expand-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; padding: .625rem .875rem .75rem }
@@ -482,6 +488,7 @@ function rowToDeal(r){
     risk:d.risks||'', next:d.next_steps||'',
     quote:d.key_quote||'', url:d.tldv_url||'#',
     dealValue:(d.deal_value||'').toString().trim(),
+    dealStatus:(d.deal_status||'open').toLowerCase(),
     lossReason:d.loss_reason||'',
     objections:(()=>{try{return JSON.parse(d.objections_with_timestamps||'[]');}catch(e){return [];}})()
   };
@@ -781,6 +788,8 @@ function buildSentiment(){
 
 function getDeals(){
   let d=[...DEALS];
+  // Always exclude Won (Pipedrive status) and Lost (tldv stage) from this list
+  d=d.filter(x=>x.dealStatus!=='won' && x.stage!=='lost');
   if(selectedRep) d=d.filter(x=>x.rep===selectedRep);
   if(currentFilter!=='all') d=d.filter(x=>x.stage===currentFilter||(currentFilter==='close'&&x.stage==='won'));
   if(searchTerm) d=d.filter(x=>[x.name,x.rep,x.pain,x.signal,x.next,x.quote].join(' ').toLowerCase().includes(searchTerm.toLowerCase()));
@@ -811,6 +820,7 @@ function dealCard(x,t){
       <div class="deal-row-rep">${hl(x.rep,t)}</div>
       <div class="deal-row-badge badge-sm ${stageBadgeClass[x.stage]||'b-dim'}">${stageLabel[x.stage]||x.stage}</div>
       ${x.dealValue?`<div class="deal-row-value">${x.dealValue}</div>`:''}
+      ${(()=>{const st=x.dealStatus||'open';const cls=st==='won'?'pd-won':st==='lost'?'pd-lost':'pd-open';const lbl=st.charAt(0).toUpperCase()+st.slice(1);return `<div class="deal-row-pdstatus ${cls}">${lbl}</div>`;})()}
       <div class="deal-row-score" style="color:${scoreColor(x.score)}">${x.score}</div>
     </div>
     <div class="expand-area" id="ea-${x.id}">
