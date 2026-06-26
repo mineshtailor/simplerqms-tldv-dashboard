@@ -789,8 +789,8 @@ function buildSentiment(){
 
 function getDeals(){
   let d=[...DEALS];
-  // Always exclude Won (Pipedrive status) and Lost (tldv stage) from this list
-  d=d.filter(x=>x.dealStatus!=='won' && x.stage!=='lost');
+  // Exclude Won and Lost. Lost can come from Pipedrive (dealStatus) OR the tldv stage.
+  d=d.filter(x=>x.dealStatus!=='won' && x.dealStatus!=='lost' && x.stage!=='lost');
   if(selectedRep) d=d.filter(x=>x.rep===selectedRep);
   if(currentFilter!=='all') d=d.filter(x=>x.stage===currentFilter||(currentFilter==='close'&&x.stage==='won'));
   if(searchTerm) d=d.filter(x=>[x.name,x.rep,x.pain,x.signal,x.next,x.quote].join(' ').toLowerCase().includes(searchTerm.toLowerCase()));
@@ -821,7 +821,7 @@ function dealCard(x,t){
       <div class="deal-row-rep">${hl(x.rep,t)}</div>
       <div class="deal-row-badge badge-sm ${stageBadgeClass[x.stage]||'b-dim'}">${stageLabel[x.stage]||x.stage}</div>
       ${x.dealValue?`<div class="deal-row-value">${x.dealValue}</div>`:''}
-      ${x.pipedriveStageName?`<div class="deal-row-pdstatus pd-open">${x.pipedriveStageName}</div>`:(()=>{const st=x.dealStatus||'open';const cls=st==='won'?'pd-won':st==='lost'?'pd-lost':'pd-open';const lbl=st.charAt(0).toUpperCase()+st.slice(1);return `<div class="deal-row-pdstatus ${cls}">${lbl}</div>`;})()}
+      ${(()=>{const st=(x.dealStatus||'open');const cls=st==='won'?'pd-won':st==='lost'?'pd-lost':'pd-open';if(x.pipedriveStageName){return `<div class="deal-row-pdstatus ${cls}">${x.pipedriveStageName}</div>`;}const lbl=st.charAt(0).toUpperCase()+st.slice(1);return `<div class="deal-row-pdstatus ${cls}">${lbl}</div>`;})()}
       <div class="deal-row-score" style="color:${scoreColor(x.score)}">${x.score}</div>
     </div>
     <div class="expand-area" id="ea-${x.id}">
