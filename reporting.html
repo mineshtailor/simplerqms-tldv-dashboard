@@ -206,6 +206,8 @@ Chart.defaults.font.family = "'DM Sans', sans-serif";
 Chart.defaults.color = '#888880';
 Chart.defaults.font.size = 12;
 
+const ACTIVE_REPS = new Set(['Allan Murphy Bruun','Martin Choleski','Martin Angelovski','Thomas Tschirhart','Alex Popa','Milo Shirley']);
+const activeOpen = d => d.status==='open' && (d.stage||'').toLowerCase()!=='archived' && ACTIVE_REPS.has(d.owner);
 let DATA = null;
 const state = { range:'ytd', fc:'month' };
 const charts = {};
@@ -264,7 +266,7 @@ function renderRange(){
 
   const won = deals.filter(d=>d.status==='won');
   const lost = deals.filter(d=>d.status==='lost');
-  const openActive = deals.filter(d=>d.status==='open' && (d.stage||'').toLowerCase()!=='archived');
+  const openActive = deals.filter(activeOpen);
   const wonR = won.filter(d=>inRange(d.won));
   const lostR = lost.filter(d=>inRange(d.lost));
 
@@ -343,7 +345,7 @@ function renderRange(){
 }
 
 function renderForecast(){
-  const open = (DATA.deals||[]).filter(d=>d.status==='open' && (d.stage||'').toLowerCase()!=='archived' && d.ecd);
+  const open = (DATA.deals||[]).filter(d=>activeOpen(d) && d.ecd);
   const now=new Date(); const y=now.getFullYear(), m=now.getMonth(), q=Math.floor(m/3);
   const inMonth=d=>{const t=parseDate(d.ecd);return t&&t.getFullYear()===y&&t.getMonth()===m;};
   const inQ=d=>{const t=parseDate(d.ecd);return t&&t.getFullYear()===y&&Math.floor(t.getMonth()/3)===q;};
@@ -365,7 +367,7 @@ function renderForecast(){
 }
 
 function renderPipeline(){
-  const openActive=(DATA.deals||[]).filter(d=>d.status==='open' && (d.stage||'').toLowerCase()!=='archived');
+  const openActive=(DATA.deals||[]).filter(activeOpen);
   const sm={}; openActive.forEach(d=>{const s=d.stage||'(none)';if(!sm[s])sm[s]={val:0,n:0};sm[s].val+=(d.eur||0);sm[s].n++;});
   const st=Object.entries(sm).sort((a,b)=>b[1].val-a[1].val);
   draw('pipeStage',{ type:'bar',
