@@ -209,6 +209,7 @@ nav {
 .obj-group-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 4px }
 .obj-group-name { font-size: 12px; font-weight: 600; color: var(--text) }
 .obj-group-meta { font-size: 10px; color: var(--muted); white-space: nowrap; flex-shrink: 0 }
+.obj-group-facts { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0 0 6px }
 .obj-line { display: flex; align-items: flex-start; gap: 8px; padding: 2px 0 2px 12px; margin-left: 3px; border-left: 2px solid var(--border) }
 .obj-line:hover { background: var(--card) }
 .obj-line-text { flex: 1; font-size: 11px; line-height: 1.45; color: var(--muted) }
@@ -490,6 +491,7 @@ function rowToDeal(r){
     dealValue:(d.deal_value||'').toString().trim(),
     dealStatus:(d.deal_status||'open').toLowerCase(),
     pipedriveStageName:(d.pipedrive_stage_name||'').toString().trim(),
+    pipedriveDealId:(d.pipedrive_deal_id||'').toString().trim(),
     lossReason:d.loss_reason||'',
     objections:(()=>{try{return JSON.parse(d.objections_with_timestamps||'[]');}catch(e){return [];}})()
   };
@@ -905,7 +907,11 @@ function buildPlaybook(){
         return `<div class="obj-line"><span class="obj-line-text">${ot}</span><span class="badge-sm ${sBadge(o.status)}">${sLabel(o.status)}</span>${ts}</div>`;
       }).join('');
       const meta=`${objs.length} objection${objs.length!==1?'s':''}${open?` · ${open} open`:' · resolved'}`;
-      return `<div class="obj-group"><div class="obj-group-head"><span class="obj-group-name">${d.name}</span><span class="obj-group-meta">${meta}</span></div>${lines}</div>`;
+      const stRaw=(d.dealStatus||'open');
+      const stCls=stRaw==='won'?'pd-won':stRaw==='lost'?'pd-lost':'pd-open';
+      const stLbl=stRaw.charAt(0).toUpperCase()+stRaw.slice(1);
+      const facts=d.pipedriveDealId?`<div class="obj-group-facts">${d.dealValue?`<span class="deal-row-value">ARR ${d.dealValue}</span>`:''}${d.pipedriveStageName?`<span class="badge-sm b-dim">${d.pipedriveStageName}</span>`:''}<span class="deal-row-pdstatus ${stCls}">${stLbl}</span></div>`:'';
+      return `<div class="obj-group"><div class="obj-group-head"><span class="obj-group-name">${d.name}</span><span class="obj-group-meta">${meta}</span></div>${facts}${lines}</div>`;
     }).join('');
     const col=arr.length>10?'#d04040':arr.length>4?'#e07a10':'#888';
     return `<div class="insight-item" onclick="togInsight('${id}')">
