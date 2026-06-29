@@ -236,6 +236,21 @@ nav {
 
 mark.hl { background: var(--yellow-mid); color: var(--text); border-radius: 2px; padding: 0 2px }
 .sec-heading { font-size: 1.1rem; font-weight: 600; letter-spacing: -.02em; margin-bottom: .875rem; color: var(--dark) }
+.card-sub { font-size: 11px; color: var(--muted); line-height: 1.5 }
+.winloss-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px }
+@media (max-width: 760px){ .winloss-grid { grid-template-columns: 1fr } }
+.wl-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle }
+.wl-dot-won { background: var(--green) }
+.wl-dot-lost { background: var(--red) }
+.wl-meta { font-size: 11px; color: var(--muted); font-weight: 500 }
+.wl-list-scroll { max-height: 460px; overflow-y: auto; margin: 0 -2px; padding: 0 2px }
+.wl-row { padding: 9px 0; border-top: 1px solid var(--border) }
+.wl-row:first-child { border-top: none; padding-top: 2px }
+.wl-row-head { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; margin-bottom: 3px }
+.wl-row-name { font-size: 12px; font-weight: 600; color: var(--text) }
+.wl-row-why { font-size: 11px; color: var(--muted); line-height: 1.55 }
+.wl-row-why.pending { font-style: italic; opacity: .75 }
+.wl-link { font-size: 10px; color: #2563eb; text-decoration: none; white-space: nowrap; flex-shrink: 0 }
 
 /* COMP */
 .comp-item { padding: .5rem .75rem; background: var(--card2); border-radius: 8px; margin-bottom: 5px; border: 1px solid var(--border) }
@@ -268,6 +283,7 @@ footer { text-align: center; color: var(--muted); font-size: 11px; padding: 2rem
     <button class="nav-link" onclick="navTo('reps-section',this)">Reps</button>
     <button class="nav-link" onclick="navTo('coaching-section',this)">Coaching</button>
     <button class="nav-link" onclick="navTo('playbook-section',this)">Playbook</button>
+    <button class="nav-link" onclick="navTo('winloss-section',this)">Win / loss</button>
     <button class="nav-link" onclick="navTo('sentiment-section',this)">Sentiment</button>
 
   </div>
@@ -436,6 +452,16 @@ footer { text-align: center; color: var(--muted); font-size: 11px; padding: 2rem
     </div>
   </div>
 
+  <!-- WIN / LOSS -->
+  <div id="winloss-section">
+    <div class="sec-heading">Win / loss analysis</div>
+    <div class="card-sub" style="margin:-2px 0 10px">Closed deals from Pipedrive, with ARR and why each was won or lost — drawn from the tldv call analysis. Click a deal to open the call.</div>
+    <div class="winloss-grid">
+      <div class="card"><div class="card-title" style="margin-bottom:.6rem"><span class="wl-dot wl-dot-won"></span>Won <span id="wl-won-meta" class="wl-meta"></span></div><div id="wl-won-list"></div></div>
+      <div class="card"><div class="card-title" style="margin-bottom:.6rem"><span class="wl-dot wl-dot-lost"></span>Lost <span id="wl-lost-meta" class="wl-meta"></span></div><div id="wl-lost-list"></div></div>
+    </div>
+  </div>
+
   <!-- SENTIMENT -->
   <div id="sentiment-section">
     <div class="sec-heading">Customer sentiment &amp; quotes</div>
@@ -493,6 +519,7 @@ function rowToDeal(r){
     pipedriveStageName:(d.pipedrive_stage_name||'').toString().trim(),
     pipedriveDealId:(d.pipedrive_deal_id||'').toString().trim(),
     lossReason:d.loss_reason||'',
+    closeReason:(d.closure_reason||'').toString().trim(),
     objections:(()=>{try{return JSON.parse(d.objections_with_timestamps||'[]');}catch(e){return [];}})()
   };
 }
@@ -716,6 +743,28 @@ function togInsight(id){
   if(chv) chv.classList.toggle('open', !open);
 }
 
+function buildWinLoss(){
+  const numArr=s=>{const n=parseFloat(String(s||'').replace(/[^0-9.]/g,''));return isNaN(n)?0:n;};
+  const won=DEALS.filter(d=>d.dealStatus==='won');
+  const lost=DEALS.filter(d=>d.dealStatus==='lost');
+  const render=(rows,kind)=>{
+    if(!rows.length) return '<div class="wl-row-why pending">No '+kind+' deals recorded yet.</div>';
+    return '<div class="wl-list-scroll">'+rows.slice().sort((a,b)=>numArr(b.dealValue)-numArr(a.dealValue)).map(d=>{
+      const why=d.closeReason
+        ? '<div class="wl-row-why">'+d.closeReason+'</div>'
+        : '<div class="wl-row-why pending">Analysis pending — not yet generated from this deal\u2019s transcript.</div>';
+      const val=d.dealValue?'<span class="deal-row-value">'+d.dealValue+'</span>':'<span class="wl-meta">ARR n/a</span>';
+      const link=(d.url&&d.url!=='#')?'<a class="wl-link" href="'+d.url+'" target="_blank">open call \u2197</a>':'';
+      return '<div class="wl-row"><div class="wl-row-head"><span class="wl-row-name">'+d.name+'</span>'+val+'</div>'+why+(link?'<div style="margin-top:4px">'+link+'</div>':'')+'</div>';
+    }).join('')+'</div>';
+  };
+  const meta=rows=>{const n=rows.filter(d=>d.closeReason).length;return rows.length?'\u00b7 '+rows.length+' deal'+(rows.length!==1?'s':'')+' \u00b7 '+n+' analysed':'';};
+  document.getElementById('wl-won-list').innerHTML=render(won,'won');
+  document.getElementById('wl-lost-list').innerHTML=render(lost,'lost');
+  document.getElementById('wl-won-meta').textContent=meta(won);
+  document.getElementById('wl-lost-meta').textContent=meta(lost);
+}
+
 function buildSentiment(){
   const withQuotes=DEALS.filter(d=>d.quote&&d.quote.length>10);
   const total=DEALS.length||1;
@@ -872,7 +921,7 @@ function navTo(id,el){
 }
 
 window.addEventListener('scroll',()=>{
-  const sections=['hero','deals-section','reps-section','coaching-section','playbook-section','sentiment-section'];
+  const sections=['hero','deals-section','reps-section','coaching-section','playbook-section','winloss-section','sentiment-section'];
   let current='hero';
   sections.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<100)current=id});
   document.querySelectorAll('.nav-link').forEach(l=>{
@@ -955,7 +1004,7 @@ function buildPlaybook(){
 }
 
 function rebuildAll(){
-  updateStrip();buildFunnel();buildReps();buildCoaching();buildPlaybook();buildSentiment();renderDeals();
+  updateStrip();buildFunnel();buildReps();buildCoaching();buildPlaybook();buildWinLoss();buildSentiment();renderDeals();
 }
 
 function fetchDeals(){
