@@ -26,11 +26,18 @@ nav{background:var(--card);border-bottom:1px solid var(--border);display:flex;al
 .nav-link.active{background:var(--dark);color:#fff}
 .nav-link.back{color:var(--text);border:1px solid var(--border2)}
 .wrap{max-width:1180px;margin:0 auto;padding:2rem}
-.head{margin-bottom:1.5rem}
+.head{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:14px;margin-bottom:.4rem}
 .head h1{font-family:'Inter',sans-serif;font-size:26px;font-weight:600;letter-spacing:-.02em}
 .head p{color:var(--muted);font-size:13px;margin-top:3px}
+.filterbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:1.1rem 0 .2rem}
+.filter-label{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600;margin-right:2px}
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--border2);border-radius:10px;padding:3px;gap:2px}
+.seg button{font-family:inherit;font-size:12.5px;font-weight:500;border:none;background:none;color:var(--muted);padding:5px 13px;border-radius:7px;cursor:pointer;transition:all .12s}
+.seg button:hover{color:var(--text)}
+.seg button.on{background:var(--dark);color:#fff}
 .sec{margin-top:2.2rem}
 .sec-title{font-family:'Inter',sans-serif;font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin-bottom:.9rem}
+.sec-title span{color:var(--text);background:var(--yellow-light);border:1px solid var(--yellow-mid);padding:1px 8px;border-radius:20px;font-size:11px;margin-left:6px;letter-spacing:0;text-transform:none}
 .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:14px}
 .kpi{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
 .kpi .label{font-size:12px;color:var(--muted);font-weight:500}
@@ -45,6 +52,13 @@ nav{background:var(--card);border-bottom:1px solid var(--border);display:flex;al
 .card h3{font-family:'Inter',sans-serif;font-size:15px;font-weight:600;margin-bottom:2px}
 .card .hint{font-size:12px;color:var(--muted);margin-bottom:14px}
 .chart-box{position:relative;height:300px}
+.fc-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:4px}
+@media(max-width:680px){.fc-cards{grid-template-columns:1fr}}
+.fc{background:var(--card);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px}
+.fc.on{border-color:var(--dark);box-shadow:0 0 0 1px var(--dark)}
+.fc .p{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+.fc .v{font-family:'Inter',sans-serif;font-size:26px;font-weight:600;margin-top:6px}
+.fc .s{font-size:12px;color:var(--muted);margin-top:2px}
 table{width:100%;border-collapse:collapse;font-size:13px}
 th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border2)}
 td{padding:9px 10px;border-bottom:1px solid var(--border)}
@@ -54,6 +68,8 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 .pill{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:20px}
 .pill.g{background:var(--green-bg);color:var(--green)}
 .pill.r{background:var(--red-bg);color:var(--red)}
+.note{background:var(--yellow-light);border:1px solid var(--yellow-mid);border-radius:var(--radius-sm);padding:12px 14px;font-size:12.5px;color:#6b5a10;margin-top:14px}
+.note b{color:#5a4c0c}
 .foot{margin-top:2.5rem;padding-top:1.2rem;border-top:1px solid var(--border);color:var(--muted);font-size:12px}
 .loading{padding:3rem;text-align:center;color:var(--muted)}
 </style>
@@ -64,55 +80,78 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
   <div class="nav-links">
     <a class="nav-link back" href="index.html">&larr; Dashboard</a>
     <a class="nav-link active" href="#kpi-sec">Overview</a>
+    <a class="nav-link" href="#fc-sec">Forecast</a>
     <a class="nav-link" href="#trend-sec">Trends</a>
     <a class="nav-link" href="#pipe-sec">Pipeline</a>
     <a class="nav-link" href="#rep-sec">Reps</a>
-    <a class="nav-link" href="#mix-sec">Mix</a>
+    <a class="nav-link" href="#leads-sec">Leads</a>
   </div>
 </nav>
 
 <div class="wrap">
   <div class="head">
-    <h1>Sales Performance &mdash; CRO View</h1>
-    <p id="subhead">Loading live pipeline from Pipedrive&hellip;</p>
+    <div>
+      <h1>Sales Performance &mdash; CRO View</h1>
+      <p id="subhead">Loading live pipeline from Pipedrive&hellip;</p>
+    </div>
+  </div>
+
+  <div class="filterbar" id="filterbar" style="display:none">
+    <span class="filter-label">Date range</span>
+    <div class="seg" id="rangeSeg">
+      <button data-range="ytd" class="on">YTD</button>
+      <button data-range="12">Last 12 mo</button>
+      <button data-range="24">Last 24 mo</button>
+      <button data-range="all">All time</button>
+    </div>
   </div>
 
   <div id="content" style="display:none">
     <div class="sec" id="kpi-sec">
-      <div class="sec-title">Headline (last 12 months)</div>
+      <div class="sec-title">Headline <span id="rangeLabel">YTD</span></div>
       <div class="kpis" id="kpis"></div>
     </div>
 
+    <div class="sec" id="fc-sec">
+      <div class="sec-title">Forecast &mdash; open deals by expected close date</div>
+      <div class="fc-cards" id="fcCards"></div>
+      <div class="card" style="margin-top:14px">
+        <h3>Deals expected to close <span id="fcWhich">this month</span></h3>
+        <div class="hint">Open deals with an expected close date in the selected period, by value.</div>
+        <div style="overflow-x:auto"><table id="fcTable"></table></div>
+      </div>
+    </div>
+
     <div class="sec" id="trend-sec">
-      <div class="sec-title">Trends</div>
+      <div class="sec-title">Trends <span id="rangeLabel2">YTD</span></div>
       <div class="grid2">
         <div class="card">
           <h3>Bookings won by month</h3>
-          <div class="hint">Closed-won value (&euro;), last 24 months</div>
+          <div class="hint">Closed-won value (&euro;)</div>
           <div class="chart-box"><canvas id="wonByMonth"></canvas></div>
         </div>
         <div class="card">
           <h3>Win rate by month</h3>
-          <div class="hint">Won &divide; (won + lost) by close month, last 24 months</div>
+          <div class="hint">Won &divide; (won + lost) by close month</div>
           <div class="chart-box"><canvas id="winRate"></canvas></div>
         </div>
       </div>
     </div>
 
     <div class="sec" id="pipe-sec">
-      <div class="sec-title">Open pipeline</div>
+      <div class="sec-title">Open pipeline <span>point-in-time</span></div>
       <div class="card">
         <h3>Pipeline by stage</h3>
-        <div class="hint">Open deals by current stage (excludes archived). Bar = value (&euro;), label = deal count.</div>
+        <div class="hint">Open deals by current stage (excludes archived). Bar = value (&euro;), tooltip = deal count. Not affected by date range.</div>
         <div class="chart-box" style="height:360px"><canvas id="pipeStage"></canvas></div>
       </div>
     </div>
 
     <div class="sec" id="rep-sec">
-      <div class="sec-title">Performance by rep</div>
+      <div class="sec-title">Performance by rep <span id="rangeLabel3">YTD</span></div>
       <div class="card">
         <h3>Owner leaderboard</h3>
-        <div class="hint">All-time won/lost; open value is current. Sorted by won value.</div>
+        <div class="hint">Won/lost within the selected range; open value is current pipeline. Sorted by won value.</div>
         <div style="overflow-x:auto"><table id="repTable"></table></div>
       </div>
     </div>
@@ -121,15 +160,32 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
       <div class="grid2">
         <div class="card">
           <h3>Won value by region</h3>
-          <div class="hint">Closed-won (&euro;), all time</div>
+          <div class="hint">Closed-won (&euro;) within range</div>
           <div class="chart-box"><canvas id="regionMix"></canvas></div>
         </div>
         <div class="card">
           <h3>Recent wins</h3>
-          <div class="hint">Most recent closed-won deals</div>
+          <div class="hint">Most recent closed-won deals in range</div>
           <div style="overflow-x:auto"><table id="recentTable"></table></div>
         </div>
       </div>
+    </div>
+
+    <div class="sec" id="leads-sec">
+      <div class="sec-title">Leads <span id="rangeLabel4">YTD</span></div>
+      <div class="grid2">
+        <div class="card">
+          <h3>Lead types we're getting</h3>
+          <div class="hint">By Lead Type custom field, leads created in range</div>
+          <div class="chart-box"><canvas id="leadType"></canvas></div>
+        </div>
+        <div class="card">
+          <h3>Leads created by month</h3>
+          <div class="hint">New leads by creation month</div>
+          <div class="chart-box"><canvas id="leadsByMonth"></canvas></div>
+        </div>
+      </div>
+      <div class="note" id="convNote"></div>
     </div>
 
     <div class="foot" id="foot"></div>
@@ -141,141 +197,186 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 const FMT0 = new Intl.NumberFormat('en-US',{maximumFractionDigits:0});
 const eur = n => '\u20ac' + FMT0.format(Math.round(n||0));
 const PAL = { dark:'#1a1a1a', yellow:'#f5c518', green:'#1a9e6a', red:'#d04040', blue:'#2563eb', amber:'#e07a10', purple:'#7c3aed', muted:'#b8b8b0' };
+const PIE = ['#1a1a1a','#f5c518','#2563eb','#1a9e6a','#e07a10','#7c3aed','#d04040','#b8b8b0','#fdeea0','#9ca3af'];
 function parseDate(s){ if(!s) return null; const d = new Date(String(s).replace(' ','T')); return isNaN(d)?null:d; }
 function monthKey(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
-function lastMonths(n){ const out=[]; const now=new Date(); for(let i=n-1;i>=0;i--){ const d=new Date(now.getFullYear(),now.getMonth()-i,1); out.push(monthKey(d)); } return out; }
+function monthLabel(k){ const [y,mo]=k.split('-'); return new Date(y,mo-1,1).toLocaleDateString('en-US',{month:'short'})+(mo==='01'?" '"+y.slice(2):''); }
 
 Chart.defaults.font.family = "'DM Sans', sans-serif";
 Chart.defaults.color = '#888880';
 Chart.defaults.font.size = 12;
 
-fetch('pipeline.json?cb=' + Date.now())
-  .then(r => r.json())
-  .then(render)
-  .catch(e => { document.getElementById('loading').textContent = 'Could not load pipeline.json — ' + e; });
+let DATA = null;
+const state = { range:'ytd', fc:'month' };
+const charts = {};
+function draw(id, cfg){ if(charts[id]) charts[id].destroy(); charts[id] = new Chart(document.getElementById(id), cfg); }
 
-function render(data){
-  const deals = data.deals || [];
+function rangeStart(r){
   const now = new Date();
-  const cutoff12 = new Date(now.getFullYear(), now.getMonth()-12, now.getDate());
+  if(r==='ytd') return new Date(now.getFullYear(),0,1);
+  if(r==='12') return new Date(now.getFullYear(),now.getMonth()-12,now.getDate());
+  if(r==='24') return new Date(now.getFullYear(),now.getMonth()-24,now.getDate());
+  return new Date(2000,0,1);
+}
+function rangeLabelText(r){ return r==='ytd'?'YTD':(r==='12'?'Last 12 months':(r==='24'?'Last 24 months':'All time')); }
+function monthsInRange(start){
+  const now = new Date(); const out=[];
+  let y=start.getFullYear(), m=start.getMonth();
+  const guard = new Date(now.getFullYear(), now.getMonth(), 1);
+  let cur = new Date(y, m, 1);
+  if(cur < new Date(now.getFullYear()-3, now.getMonth(), 1)) cur = new Date(now.getFullYear()-3, now.getMonth(), 1); // cap all-time at 36mo
+  while(cur <= guard){ out.push(monthKey(cur)); cur = new Date(cur.getFullYear(), cur.getMonth()+1, 1); }
+  return out;
+}
+
+fetch('pipeline.json?cb=' + Date.now()).then(r=>r.json()).then(d=>{ DATA=d; init(); })
+  .catch(e=>{ document.getElementById('loading').textContent = 'Could not load pipeline.json — ' + e; });
+
+function init(){
+  document.getElementById('filterbar').style.display='flex';
+  document.getElementById('content').style.display='block';
+  document.getElementById('loading').style.display='none';
+  const deals = DATA.deals||[], leads = DATA.leads||[];
+  document.getElementById('subhead').innerHTML = 'Live from Pipedrive &middot; '+deals.length+' deals &middot; '+leads.length+' leads &middot; updated daily';
+  const gen = DATA.generated_at ? new Date(DATA.generated_at).toLocaleString('en-US') : 'unknown';
+  document.getElementById('foot').innerHTML = 'Source: Pipedrive &middot; '+deals.length+' deals ('+deals.filter(d=>d.status==='won').length+' won / '+deals.filter(d=>d.status==='lost').length+' lost / '+deals.filter(d=>d.status==='open').length+' open) &middot; '+leads.length+' leads &middot; '+(DATA.fx_note||'EUR')+' &middot; deal <em>value</em> used as revenue (ARR field sparse) &middot; generated '+gen;
+
+  // pipeline by stage is point-in-time — render once
+  renderPipeline();
+  // range-driven views
+  document.querySelectorAll('#rangeSeg button').forEach(b=>b.addEventListener('click',()=>{
+    state.range=b.dataset.range;
+    document.querySelectorAll('#rangeSeg button').forEach(x=>x.classList.toggle('on',x===b));
+    renderRange();
+  }));
+  // forecast cards click
+  renderForecast();
+  renderRange();
+  setupScrollSpy();
+}
+
+function renderRange(){
+  const lbl = rangeLabelText(state.range);
+  ['rangeLabel','rangeLabel2','rangeLabel3','rangeLabel4'].forEach(id=>document.getElementById(id).textContent=lbl);
+  const start = rangeStart(state.range);
+  const deals = DATA.deals||[], leads = DATA.leads||[];
+  const inRange = (s)=>{ const t=parseDate(s); return t && t>=start; };
 
   const won = deals.filter(d=>d.status==='won');
   const lost = deals.filter(d=>d.status==='lost');
-  const open = deals.filter(d=>d.status==='open');
-  const openActive = open.filter(d => (d.stage||'').toLowerCase() !== 'archived');
+  const openActive = deals.filter(d=>d.status==='open' && (d.stage||'').toLowerCase()!=='archived');
+  const wonR = won.filter(d=>inRange(d.won));
+  const lostR = lost.filter(d=>inRange(d.lost));
 
-  // ---- Headline KPIs (last 12 months) ----
-  const won12 = won.filter(d=>{ const t=parseDate(d.won); return t && t>=cutoff12; });
-  const lost12 = lost.filter(d=>{ const t=parseDate(d.lost); return t && t>=cutoff12; });
-  const won12val = won12.reduce((s,d)=>s+(d.eur||0),0);
-  const winRate12 = (won12.length+lost12.length) ? won12.length/(won12.length+lost12.length) : 0;
+  // KPIs
+  const wonVal = wonR.reduce((s,d)=>s+(d.eur||0),0);
+  const winRate = (wonR.length+lostR.length)? wonR.length/(wonR.length+lostR.length):0;
   const openVal = openActive.reduce((s,d)=>s+(d.eur||0),0);
-  const wonVals = won12.filter(d=>d.eur>0).map(d=>d.eur);
-  const avgDeal = wonVals.length ? wonVals.reduce((a,b)=>a+b,0)/wonVals.length : 0;
-  // sales cycle (median days add->won) for last-12mo wins
-  const cycles = won12.map(d=>{ const a=parseDate(d.add), w=parseDate(d.won); return (a&&w)?(w-a)/86400000:null; }).filter(x=>x!=null && x>=0).sort((a,b)=>a-b);
-  const medCycle = cycles.length ? cycles[Math.floor(cycles.length/2)] : 0;
-
+  const wv = wonR.filter(d=>d.eur>0).map(d=>d.eur);
+  const avg = wv.length? wv.reduce((a,b)=>a+b,0)/wv.length:0;
+  const cyc = wonR.map(d=>{const a=parseDate(d.add),w=parseDate(d.won);return (a&&w)?(w-a)/86400000:null;}).filter(x=>x!=null&&x>=0).sort((a,b)=>a-b);
+  const med = cyc.length? cyc[Math.floor(cyc.length/2)]:0;
   const kpis = [
-    { label:'Open pipeline', val:eur(openVal), sub:openActive.length+' active deals', accent:true },
-    { label:'Bookings won (12mo)', val:eur(won12val), sub:won12.length+' deals' },
-    { label:'Win rate (12mo)', val:(winRate12*100).toFixed(0)+'%', sub:won12.length+' won / '+lost12.length+' lost' },
-    { label:'Avg deal size', val:eur(avgDeal), sub:'won, last 12mo' },
-    { label:'Median sales cycle', val:Math.round(medCycle)+'d', sub:'create \u2192 won' },
-    { label:'Lost (12mo)', val:FMT0.format(lost12.length), sub:'deals' },
+    {label:'Open pipeline',val:eur(openVal),sub:openActive.length+' active deals (now)',accent:true},
+    {label:'Bookings won',val:eur(wonVal),sub:wonR.length+' deals'},
+    {label:'Win rate',val:(winRate*100).toFixed(0)+'%',sub:wonR.length+' won / '+lostR.length+' lost'},
+    {label:'Avg deal size',val:eur(avg),sub:'won deals'},
+    {label:'Median sales cycle',val:Math.round(med)+'d',sub:'create \u2192 won'},
+    {label:'Lost',val:FMT0.format(lostR.length),sub:'deals'},
   ];
-  document.getElementById('kpis').innerHTML = kpis.map(k=>
-    '<div class="kpi'+(k.accent?' accent':'')+'"><div class="label">'+k.label+'</div><div class="val">'+k.val+'</div><div class="sub">'+k.sub+'</div></div>'
-  ).join('');
+  document.getElementById('kpis').innerHTML = kpis.map(k=>'<div class="kpi'+(k.accent?' accent':'')+'"><div class="label">'+k.label+'</div><div class="val">'+k.val+'</div><div class="sub">'+k.sub+'</div></div>').join('');
 
-  // ---- Bookings won by month (24mo) ----
-  const months = lastMonths(24);
-  const wonByM = {}; months.forEach(m=>wonByM[m]=0);
-  won.forEach(d=>{ const t=parseDate(d.won); if(!t) return; const k=monthKey(t); if(k in wonByM) wonByM[k]+=(d.eur||0); });
-  const labels = months.map(m=>{ const [y,mo]=m.split('-'); return new Date(y,mo-1,1).toLocaleDateString('en-US',{month:'short'})+(mo==='01'?" '"+y.slice(2):''); });
-  new Chart(document.getElementById('wonByMonth'),{
-    type:'bar',
-    data:{ labels, datasets:[{ data:months.map(m=>wonByM[m]), backgroundColor:PAL.yellow, borderColor:PAL.dark, borderWidth:0, borderRadius:4 }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>eur(c.parsed.y) } } },
-      scales:{ x:{ grid:{display:false} }, y:{ grid:{color:'rgba(0,0,0,.05)'}, ticks:{ callback:v=>'\u20ac'+(v>=1000?(v/1000)+'k':v) } } } }
-  });
+  const months = monthsInRange(start);
+  const labels = months.map(monthLabel);
+  // bookings won by month
+  const wonByM={}; months.forEach(m=>wonByM[m]=0);
+  won.forEach(d=>{const t=parseDate(d.won); if(t){const k=monthKey(t); if(k in wonByM) wonByM[k]+=(d.eur||0);}});
+  draw('wonByMonth',{ type:'bar',
+    data:{labels,datasets:[{data:months.map(m=>wonByM[m]),backgroundColor:PAL.yellow,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>eur(c.parsed.y)}}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:v=>'\u20ac'+(v>=1000?(v/1000)+'k':v)}}}} });
+  // win rate by month
+  const wr = months.map(m=>{let w=0,l=0;won.forEach(d=>{const t=parseDate(d.won);if(t&&monthKey(t)===m)w++;});lost.forEach(d=>{const t=parseDate(d.lost);if(t&&monthKey(t)===m)l++;});return (w+l)?Math.round(100*w/(w+l)):null;});
+  draw('winRate',{ type:'line',
+    data:{labels,datasets:[{data:wr,borderColor:PAL.green,backgroundColor:'rgba(26,158,106,.10)',borderWidth:2,fill:true,tension:.3,pointRadius:2,pointBackgroundColor:PAL.green,spanGaps:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y+'% win rate'}}},scales:{x:{grid:{display:false}},y:{min:0,max:100,grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:v=>v+'%'}}}} });
 
-  // ---- Win rate by month (24mo) ----
-  const wRate = months.map(m=>{
-    let w=0,l=0;
-    won.forEach(d=>{ const t=parseDate(d.won); if(t&&monthKey(t)===m) w++; });
-    lost.forEach(d=>{ const t=parseDate(d.lost); if(t&&monthKey(t)===m) l++; });
-    return (w+l)? Math.round(100*w/(w+l)) : null;
-  });
-  new Chart(document.getElementById('winRate'),{
-    type:'line',
-    data:{ labels, datasets:[{ data:wRate, borderColor:PAL.green, backgroundColor:'rgba(26,158,106,.10)', borderWidth:2, fill:true, tension:.3, pointRadius:2, pointBackgroundColor:PAL.green, spanGaps:true }] },
-    options:{ responsive:true, maintainAspectRatio:false, plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>c.parsed.y+'% win rate' } } },
-      scales:{ x:{ grid:{display:false} }, y:{ min:0, max:100, grid:{color:'rgba(0,0,0,.05)'}, ticks:{ callback:v=>v+'%' } } } }
-  });
+  // rep leaderboard
+  const reps={};
+  const R=o=>{if(!reps[o])reps[o]={won:0,wonVal:0,lost:0,openVal:0};return reps[o];};
+  wonR.forEach(d=>{const r=R(d.owner);r.won++;r.wonVal+=(d.eur||0);});
+  lostR.forEach(d=>{R(d.owner).lost++;});
+  openActive.forEach(d=>{R(d.owner).openVal+=(d.eur||0);});
+  const rows=Object.entries(reps).filter(([o,r])=>r.won||r.lost||r.openVal).sort((a,b)=>b[1].wonVal-a[1].wonVal).slice(0,12);
+  const maxW=Math.max(1,...rows.map(r=>r[1].wonVal));
+  let rt='<tr><th>Rep</th><th class="num">Won</th><th class="num">Won value</th><th class="num">Lost</th><th class="num">Win rate</th><th class="num">Open value</th></tr>';
+  rows.forEach(([o,r])=>{const wrr=(r.won+r.lost)?Math.round(100*r.won/(r.won+r.lost)):0;const w=Math.max(4,Math.round(70*r.wonVal/maxW));rt+='<tr><td>'+o+'</td><td class="num">'+r.won+'</td><td class="num">'+eur(r.wonVal)+' <span class="bar-mini" style="width:'+w+'px"></span></td><td class="num">'+r.lost+'</td><td class="num"><span class="pill '+(wrr>=50?'g':'r')+'">'+wrr+'%</span></td><td class="num">'+eur(r.openVal)+'</td></tr>';});
+  document.getElementById('repTable').innerHTML=rt;
 
-  // ---- Pipeline by stage (open, active) ----
-  const stageMap = {};
-  openActive.forEach(d=>{ const s=d.stage||'(none)'; if(!stageMap[s]) stageMap[s]={val:0,n:0}; stageMap[s].val+=(d.eur||0); stageMap[s].n++; });
-  const stages = Object.entries(stageMap).sort((a,b)=>b[1].val-a[1].val);
-  new Chart(document.getElementById('pipeStage'),{
-    type:'bar',
-    data:{ labels:stages.map(s=>s[0]), datasets:[{ data:stages.map(s=>s[1].val), backgroundColor:PAL.blue, borderRadius:4 }] },
-    options:{ indexAxis:'y', responsive:true, maintainAspectRatio:false,
-      plugins:{ legend:{display:false}, tooltip:{ callbacks:{ label:c=>eur(c.parsed.x)+'  ('+stages[c.dataIndex][1].n+' deals)' } } },
-      scales:{ x:{ grid:{color:'rgba(0,0,0,.05)'}, ticks:{ callback:v=>'\u20ac'+(v>=1000?(v/1000)+'k':v) } }, y:{ grid:{display:false} } } }
-  });
+  // region mix
+  const reg={}; wonR.forEach(d=>{const k=d.region||'Unknown';reg[k]=(reg[k]||0)+(d.eur||0);});
+  const re=Object.entries(reg).sort((a,b)=>b[1]-a[1]);
+  draw('regionMix',{ type:'doughnut',
+    data:{labels:re.map(r=>r[0]),datasets:[{data:re.map(r=>r[1]),backgroundColor:PIE,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{position:'right',labels:{boxWidth:10,padding:10}},tooltip:{callbacks:{label:c=>c.label+': '+eur(c.parsed)}}}} });
 
-  // ---- Rep leaderboard ----
-  const reps = {};
-  function R(o){ if(!reps[o]) reps[o]={won:0,wonVal:0,lost:0,openVal:0}; return reps[o]; }
-  won.forEach(d=>{ const r=R(d.owner); r.won++; r.wonVal+=(d.eur||0); });
-  lost.forEach(d=>{ R(d.owner).lost++; });
-  openActive.forEach(d=>{ R(d.owner).openVal+=(d.eur||0); });
-  const repRows = Object.entries(reps).sort((a,b)=>b[1].wonVal-a[1].wonVal).slice(0,12);
-  const maxWonVal = Math.max(1,...repRows.map(r=>r[1].wonVal));
-  let rt = '<tr><th>Rep</th><th class="num">Won</th><th class="num">Won value</th><th class="num">Lost</th><th class="num">Win rate</th><th class="num">Open value</th></tr>';
-  repRows.forEach(([o,r])=>{
-    const wr = (r.won+r.lost)? Math.round(100*r.won/(r.won+r.lost)) : 0;
-    const w = Math.max(4, Math.round(70*r.wonVal/maxWonVal));
-    rt += '<tr><td>'+o+'</td><td class="num">'+r.won+'</td><td class="num">'+eur(r.wonVal)+' <span class="bar-mini" style="width:'+w+'px"></span></td><td class="num">'+r.lost+'</td><td class="num"><span class="pill '+(wr>=50?'g':'r')+'">'+wr+'%</span></td><td class="num">'+eur(r.openVal)+'</td></tr>';
-  });
-  document.getElementById('repTable').innerHTML = rt;
+  // recent wins
+  const recent=wonR.filter(d=>parseDate(d.won)).sort((a,b)=>parseDate(b.won)-parseDate(a.won)).slice(0,12);
+  let rc='<tr><th>Deal</th><th>Owner</th><th class="num">Value</th><th class="num">Won</th></tr>';
+  recent.forEach(d=>{const t=parseDate(d.won);rc+='<tr><td>'+(d.title||'').slice(0,40)+'</td><td>'+d.owner+'</td><td class="num">'+eur(d.eur)+'</td><td class="num">'+t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'})+'</td></tr>';});
+  if(!recent.length) rc+='<tr><td colspan="4" style="color:var(--muted)">No wins in this range.</td></tr>';
+  document.getElementById('recentTable').innerHTML=rc;
 
-  // ---- Region mix (won value) ----
-  const reg = {};
-  won.forEach(d=>{ const k=d.region||'Unknown'; reg[k]=(reg[k]||0)+(d.eur||0); });
-  const regEntries = Object.entries(reg).sort((a,b)=>b[1]-a[1]);
-  new Chart(document.getElementById('regionMix'),{
-    type:'doughnut',
-    data:{ labels:regEntries.map(r=>r[0]), datasets:[{ data:regEntries.map(r=>r[1]), backgroundColor:[PAL.dark,PAL.yellow,PAL.blue,PAL.green,PAL.amber,PAL.purple], borderWidth:2, borderColor:'#fff' }] },
-    options:{ responsive:true, maintainAspectRatio:false, cutout:'58%', plugins:{ legend:{position:'right',labels:{boxWidth:10,padding:10}}, tooltip:{ callbacks:{ label:c=>c.label+': '+eur(c.parsed) } } } }
-  });
+  // ---- leads ----
+  const leadsR = leads.filter(l=>inRange(l.add));
+  const lt={}; leadsR.forEach(l=>{const k=l.type||'Unspecified';lt[k]=(lt[k]||0)+1;});
+  const le=Object.entries(lt).sort((a,b)=>b[1]-a[1]);
+  draw('leadType',{ type:'doughnut',
+    data:{labels:le.map(r=>r[0]),datasets:[{data:le.map(r=>r[1]),backgroundColor:PIE,borderWidth:2,borderColor:'#fff'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'56%',plugins:{legend:{position:'right',labels:{boxWidth:10,padding:8,font:{size:11}}},tooltip:{callbacks:{label:c=>c.label+': '+FMT0.format(c.parsed)+' ('+Math.round(100*c.parsed/leadsR.length)+'%)'}}}} });
+  const lByM={}; months.forEach(m=>lByM[m]=0);
+  leadsR.forEach(l=>{const t=parseDate(l.add); if(t){const k=monthKey(t); if(k in lByM) lByM[k]++;}});
+  draw('leadsByMonth',{ type:'bar',
+    data:{labels,datasets:[{data:months.map(m=>lByM[m]),backgroundColor:PAL.blue,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>FMT0.format(c.parsed.y)+' leads'}}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(0,0,0,.05)'},ticks:{precision:0}}}} });
+  const topType = le.length? le[0][0]+' ('+Math.round(100*le[0][1]/leadsR.length)+'% of '+FMT0.format(leadsR.length)+')':'—';
+  document.getElementById('convNote').innerHTML = '<b>On lead&rarr;deal conversion:</b> a reliable per-type conversion rate can\u2019t be computed from the current Pipedrive data \u2014 when a lead is converted it leaves the Leads list, and deals don\u2019t retain the Lead Type field (set on only ~1% of deals). So this shows the lead <em>mix</em> you\u2019re generating ('+topType+' dominates), not conversion. To unlock true conversion tracking, set Lead Type on the deal at conversion (or add a "source lead" field) and it can be wired in here.';
+}
 
-  // ---- Recent wins ----
-  const recent = won.filter(d=>parseDate(d.won)).sort((a,b)=>parseDate(b.won)-parseDate(a.won)).slice(0,12);
-  let rct = '<tr><th>Deal</th><th>Owner</th><th class="num">Value</th><th class="num">Won</th></tr>';
-  recent.forEach(d=>{
-    const t=parseDate(d.won);
-    rct += '<tr><td>'+(d.title||'').slice(0,42)+'</td><td>'+d.owner+'</td><td class="num">'+eur(d.eur)+'</td><td class="num">'+t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'})+'</td></tr>';
-  });
-  document.getElementById('recentTable').innerHTML = rct;
+function renderForecast(){
+  const open = (DATA.deals||[]).filter(d=>d.status==='open' && (d.stage||'').toLowerCase()!=='archived' && d.ecd);
+  const now=new Date(); const y=now.getFullYear(), m=now.getMonth(), q=Math.floor(m/3);
+  const inMonth=d=>{const t=parseDate(d.ecd);return t&&t.getFullYear()===y&&t.getMonth()===m;};
+  const inQ=d=>{const t=parseDate(d.ecd);return t&&t.getFullYear()===y&&Math.floor(t.getMonth()/3)===q;};
+  const inY=d=>{const t=parseDate(d.ecd);return t&&t.getFullYear()===y;};
+  const sets={month:open.filter(inMonth),quarter:open.filter(inQ),year:open.filter(inY)};
+  const meta=[['month','This Month'],['quarter','This Quarter'],['year','This Year']];
+  document.getElementById('fcCards').innerHTML = meta.map(([k,lbl])=>{
+    const s=sets[k]; const val=s.reduce((a,d)=>a+(d.eur||0),0);
+    return '<div class="fc'+(state.fc===k?' on':'')+'" data-fc="'+k+'"><div class="p">'+lbl+'</div><div class="v">'+eur(val)+'</div><div class="s">'+s.length+' open deals expected</div></div>';
+  }).join('');
+  document.querySelectorAll('.fc[data-fc]').forEach(c=>c.addEventListener('click',()=>{state.fc=c.dataset.fc;renderForecast();}));
+  const cur=sets[state.fc];
+  document.getElementById('fcWhich').textContent = state.fc==='month'?'this month':(state.fc==='quarter'?'this quarter':'this year');
+  const rowsF=cur.slice().sort((a,b)=>(b.eur||0)-(a.eur||0)).slice(0,15);
+  let ft='<tr><th>Deal</th><th>Owner</th><th>Stage</th><th class="num">Value</th><th class="num">Exp. close</th></tr>';
+  rowsF.forEach(d=>{const t=parseDate(d.ecd);ft+='<tr><td>'+(d.title||'').slice(0,38)+'</td><td>'+d.owner+'</td><td>'+(d.stage||'')+'</td><td class="num">'+eur(d.eur)+'</td><td class="num">'+(t?t.toLocaleDateString('en-US',{month:'short',day:'numeric'}):'')+'</td></tr>';});
+  if(!cur.length) ft+='<tr><td colspan="5" style="color:var(--muted)">No open deals with an expected close date in this period.</td></tr>';
+  document.getElementById('fcTable').innerHTML=ft;
+}
 
-  // ---- footer + reveal ----
-  const gen = data.generated_at ? new Date(data.generated_at).toLocaleString('en-US') : 'unknown';
-  document.getElementById('foot').innerHTML = 'Source: Pipedrive (all deals) &middot; '+deals.length+' deals &middot; '+won.length+' won / '+lost.length+' lost / '+open.length+' open &middot; '+(data.fx_note||'EUR')+' &middot; deal <em>value</em> used as the revenue metric (Pipedrive ARR field is sparsely filled) &middot; refreshed daily, generated '+gen;
-  document.getElementById('subhead').innerHTML = 'Live from Pipedrive &middot; '+deals.length+' deals &middot; updated daily';
-  document.getElementById('loading').style.display='none';
-  document.getElementById('content').style.display='block';
+function renderPipeline(){
+  const openActive=(DATA.deals||[]).filter(d=>d.status==='open' && (d.stage||'').toLowerCase()!=='archived');
+  const sm={}; openActive.forEach(d=>{const s=d.stage||'(none)';if(!sm[s])sm[s]={val:0,n:0};sm[s].val+=(d.eur||0);sm[s].n++;});
+  const st=Object.entries(sm).sort((a,b)=>b[1].val-a[1].val);
+  draw('pipeStage',{ type:'bar',
+    data:{labels:st.map(s=>s[0]),datasets:[{data:st.map(s=>s[1].val),backgroundColor:PAL.blue,borderRadius:4}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>eur(c.parsed.x)+'  ('+st[c.dataIndex][1].n+' deals)'}}},scales:{x:{grid:{color:'rgba(0,0,0,.05)'},ticks:{callback:v=>'\u20ac'+(v>=1000?(v/1000)+'k':v)}},y:{grid:{display:false}}}} });
+}
 
-  // nav active-on-scroll
-  const secs = ['kpi-sec','trend-sec','pipe-sec','rep-sec','mix-sec'];
-  const links = document.querySelectorAll('.nav-link[href^="#"]');
-  window.addEventListener('scroll',()=>{
-    let cur = secs[0];
-    secs.forEach(id=>{ const el=document.getElementById(id); if(el && el.getBoundingClientRect().top<120) cur=id; });
-    links.forEach(l=>l.classList.toggle('active', l.getAttribute('href')==='#'+cur));
-  });
+function setupScrollSpy(){
+  const secs=['kpi-sec','fc-sec','trend-sec','pipe-sec','rep-sec','leads-sec'];
+  const links=document.querySelectorAll('.nav-link[href^="#"]');
+  window.addEventListener('scroll',()=>{let cur=secs[0];secs.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<120)cur=id;});links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+cur));});
 }
 </script>
 </body>
