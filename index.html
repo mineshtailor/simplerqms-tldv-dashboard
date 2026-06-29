@@ -468,7 +468,9 @@ footer { text-align: center; color: var(--muted); font-size: 11px; padding: 2rem
     <div class="sec-heading">Customer sentiment &amp; quotes</div>
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px" id="sentiment-grid"></div>
     <div class="card">
-      <div class="card-title" style="margin-bottom:.875rem">Verbatim quotes</div>
+      <div class="card-title" style="margin-bottom:.3rem">Buying signals that closed deals</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:.7rem">Verbatim customer quotes pulled from won-deal call transcripts — the actual language that preceded a close. Filter by signal type.</div>
+      <div id="quote-chips" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:.85rem"></div>
       <div class="deal-table" id="quote-list"></div>
     </div>
   </div>
@@ -766,6 +768,44 @@ function buildWinLoss(){
   document.getElementById('wl-lost-meta').textContent=meta(lost);
 }
 
+let QUOTES=[],QCOUNTS={},quoteFilter='all';
+const SIGCOLOR={'Value confirmed':'#1a9e6a','Beats competitor':'#2563eb','Budget fit':'#7c3aed','Commitment':'#1a9e6a','Timeline urgency':'#e07a10','Champion support':'#0f9690','Stakeholder support':'#0f9690'};
+const SIGORDER=['Commitment','Budget fit','Beats competitor','Value confirmed','Timeline urgency','Champion support','Stakeholder support'];
+function escq(s){return (s||'').toString().replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function renderBuyingSignals(){
+  fetch('quotes.json?cb='+Date.now()).then(r=>r.json()).then(d=>{
+    QUOTES=(d.quotes||[]).slice().sort((a,b)=>{const ia=SIGORDER.indexOf(a.signal),ib=SIGORDER.indexOf(b.signal);return (ia<0?99:ia)-(ib<0?99:ib);});
+    QCOUNTS={}; QUOTES.forEach(q=>{QCOUNTS[q.signal]=(QCOUNTS[q.signal]||0)+1;});
+    renderQuoteChips(); paintQuotes();
+  }).catch(()=>{document.getElementById('quote-list').innerHTML='<div style="color:var(--muted);font-size:12px;padding:6px">Buying-signal quotes unavailable — the extractor may not have run yet.</div>';});
+}
+function renderQuoteChips(){
+  const sigs=Object.keys(QCOUNTS).sort((a,b)=>QCOUNTS[b]-QCOUNTS[a]);
+  const chips=['all'].concat(sigs);
+  document.getElementById('quote-chips').innerHTML=chips.map(s=>{
+    const on=s===quoteFilter;
+    const label=s==='all'?('All ('+QUOTES.length+')'):(s+' ('+QCOUNTS[s]+')');
+    return '<button onclick="setQuoteFilter(\''+s.replace(/'/g,"\\'")+'\')" style="font-family:inherit;font-size:11px;font-weight:500;padding:4px 11px;border-radius:20px;cursor:pointer;border:1px solid '+(on?'#1a1a1a':'rgba(0,0,0,.12)')+';background:'+(on?'#1a1a1a':'#fff')+';color:'+(on?'#fff':'#888880')+'">'+label+'</button>';
+  }).join('');
+}
+function setQuoteFilter(s){quoteFilter=s;renderQuoteChips();paintQuotes();}
+function paintQuotes(){
+  let list=QUOTES.slice();
+  if(quoteFilter!=='all') list=list.filter(q=>q.signal===quoteFilter);
+  document.getElementById('quote-list').innerHTML=list.map(q=>{
+    const col=SIGCOLOR[q.signal]||'#888880';
+    const val=q.value?(' · '+escq(q.value)):'';
+    const why=q.why?(' · '+escq(q.why)):'';
+    const click=q.url?('style="cursor:pointer;align-items:flex-start" onclick="window.open(\''+q.url+'\',\'_blank\')"'):'style="cursor:default;align-items:flex-start"';
+    return '<div class="deal-row-new" '+click+'>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-size:12.5px;font-style:italic;line-height:1.5;margin-bottom:3px">&ldquo;'+escq(q.quote)+'&rdquo;</div>'+
+        '<div style="font-size:10px;color:var(--muted)">'+escq(q.company)+' · '+escq(q.rep||'—')+val+' · <span style="color:'+col+';font-weight:600">Won</span>'+why+'</div>'+
+      '</div>'+
+      '<span class="badge-sm" style="background:'+col+'1a;color:'+col+';white-space:nowrap">'+escq(q.signal||'Signal')+'</span>'+
+    '</div>';
+  }).join('') || '<div style="color:var(--muted);font-size:12px;padding:8px">No quotes for this signal.</div>';
+}
 function buildSentiment(){
   const withQuotes=DEALS.filter(d=>d.quote&&d.quote.length>10);
   const total=DEALS.length||1;
@@ -827,6 +867,7 @@ function buildSentiment(){
       <div style="font-size:11px;color:var(--muted);line-height:1.5">${c.body}</div>
     </div>`).join('');
 
+  renderBuyingSignals(); return;
   const topQuotes=withQuotes.slice().sort((a,b)=>b.score-a.score).slice(0,10);
   document.getElementById('quote-list').innerHTML=topQuotes.map(d=>`
     <div class="deal-row-new" style="cursor:default">
