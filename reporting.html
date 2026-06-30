@@ -114,6 +114,10 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 
     <div class="sec" id="fc-sec">
       <div class="sec-title">Forecast &mdash; open deals by expected close date</div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <span class="filter-label">Stage</span>
+        <select id="fcStage" style="font-family:inherit;font-size:12.5px;font-weight:500;padding:6px 11px;border-radius:10px;border:1px solid var(--border2);background:var(--card);color:var(--text);cursor:pointer"></select>
+      </div>
       <div class="fc-cards" id="fcCards"></div>
       <div class="card" style="margin-top:14px">
         <h3>Deals expected to close <span id="fcWhich">this month</span></h3>
@@ -209,7 +213,7 @@ Chart.defaults.font.size = 12;
 const ACTIVE_REPS = new Set(['Allan Murphy Bruun','Martin Choleski','Martin Angelovski','Thomas Tschirhart','Alex Popa','Milo Shirley']);
 const activeOpen = d => d.status==='open' && (d.stage||'').toLowerCase()!=='archived' && ACTIVE_REPS.has(d.owner);
 let DATA = null;
-const state = { range:'ytd', fc:'month' };
+const state = { range:'ytd', fc:'month', fcStage:'all' };
 const charts = {};
 function draw(id, cfg){ if(charts[id]) charts[id].destroy(); charts[id] = new Chart(document.getElementById(id), cfg); }
 
@@ -345,7 +349,16 @@ function renderRange(){
 }
 
 function renderForecast(){
-  const open = (DATA.deals||[]).filter(d=>activeOpen(d) && d.ecd);
+  const allOpen = (DATA.deals||[]).filter(d=>activeOpen(d) && d.ecd);
+  const sel=document.getElementById('fcStage');
+  if(sel && !sel.dataset.bound){
+    const stages=Array.from(new Set(allOpen.map(d=>d.stage||'').filter(Boolean))).sort();
+    sel.innerHTML='<option value="all">All stages</option>'+stages.map(s=>'<option value="'+s.replace(/"/g,'&quot;')+'">'+s+'</option>').join('');
+    sel.value=state.fcStage;
+    sel.addEventListener('change',()=>{state.fcStage=sel.value;renderForecast();});
+    sel.dataset.bound='1';
+  }
+  const open = allOpen.filter(d=> state.fcStage==='all' || (d.stage||'')===state.fcStage);
   const now=new Date(); const y=now.getFullYear(), m=now.getMonth(), q=Math.floor(m/3);
   const inMonth=d=>{const t=parseDate(d.ecd);return t&&t.getFullYear()===y&&t.getMonth()===m;};
   const inQ=d=>{const t=parseDate(d.ecd);return t&&t.getFullYear()===y&&Math.floor(t.getMonth()/3)===q;};
