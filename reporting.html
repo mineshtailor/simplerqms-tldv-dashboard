@@ -271,8 +271,8 @@ function renderRange(){
   const deals = DATA.deals||[], leads = DATA.leads||[];
   const inRange = (s)=>{ const t=parseDate(s); return t && t>=start; };
 
-  const won = deals.filter(d=>d.status==='won' && ACTIVE_REPS.has(d.owner));
-  const lost = deals.filter(d=>d.status==='lost' && ACTIVE_REPS.has(d.owner));
+  const won = deals.filter(d=>d.status==='won');
+  const lost = deals.filter(d=>d.status==='lost');
   const openActive = deals.filter(activeOpen);
   const wonR = won.filter(d=>inRange(d.won));
   const lostR = lost.filter(d=>inRange(d.lost));
