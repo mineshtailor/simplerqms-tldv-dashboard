@@ -329,7 +329,7 @@ function renderRange(){
     options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{position:'right',labels:{boxWidth:10,padding:10}},tooltip:{callbacks:{label:c=>c.label+': '+eur(c.parsed)}}}} });
 
   // recent wins
-  const recent=wonR.filter(d=>parseDate(d.won)).sort((a,b)=>parseDate(b.won)-parseDate(a.won)).slice(0,12);
+  const recent=wonR.filter(d=>parseDate(d.won) && ACTIVE_REPS.has(d.owner)).sort((a,b)=>parseDate(b.won)-parseDate(a.won)).slice(0,12);
   let rc='<tr><th>Deal</th><th>Owner</th><th class="num">Value</th><th class="num">Won</th></tr>';
   recent.forEach(d=>{const t=parseDate(d.won);rc+='<tr><td>'+(d.title||'').slice(0,40)+'</td><td>'+d.owner+'</td><td class="num">'+eur(d.eur)+'</td><td class="num">'+t.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'2-digit'})+'</td></tr>';});
   if(!recent.length) rc+='<tr><td colspan="4" style="color:var(--muted)">No wins in this range.</td></tr>';
