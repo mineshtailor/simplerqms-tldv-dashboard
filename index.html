@@ -482,6 +482,7 @@ footer { text-align: center; color: var(--muted); font-size: 11px; padding: 2rem
 <script>
 const API = 'deals.json';
 let DEALS = [];
+let PIPEMAP = {};
 let currentFilter = 'all';
 let currentSort = 'score';
 let searchTerm = '';
@@ -509,20 +510,32 @@ const EXCLUDED = ['jasmine','wim'];
 function rowToDeal(r){
   const d=r.data||r;
   const rep=normalizeRep(d.rep||'');
+  const pdid=(d.pipedrive_deal_id||'').toString().trim();
+  let dealStatus=(d.deal_status||'open').toLowerCase();
+  let stage=(d.stage||'active').toLowerCase();
+  let pipedriveStageName=(d.pipedrive_stage_name||'').toString().trim();
+  let closeReason=(d.closure_reason||'').toString().trim();
+  // Authoritative override: trust live Pipedrive status (pipeline.json) when the deal id resolves
+  if(pdid && PIPEMAP[pdid]){
+    dealStatus=PIPEMAP[pdid].status||dealStatus;
+    if(PIPEMAP[pdid].stage) pipedriveStageName=PIPEMAP[pdid].stage;
+    if(dealStatus!=='lost' && stage==='lost') stage='active';
+    if(dealStatus==='open') closeReason='';
+  }
   return {
     id:d.meeting_id||d.id||'', name:d.company||d.meeting_name||'',
     rep, date:(d.call_date||'').substring(0,10),
-    stage:(d.stage||'active').toLowerCase(),
+    stage:stage,
     score:Number(d.score)||0, pct:d.likelihood||'',
     pain:d.pain_points||'', signal:d.buying_signals||'',
     risk:d.risks||'', next:d.next_steps||'',
     quote:d.key_quote||'', url:d.tldv_url||'#',
     dealValue:(d.deal_value||'').toString().trim(),
-    dealStatus:(d.deal_status||'open').toLowerCase(),
-    pipedriveStageName:(d.pipedrive_stage_name||'').toString().trim(),
-    pipedriveDealId:(d.pipedrive_deal_id||'').toString().trim(),
+    dealStatus:dealStatus,
+    pipedriveStageName:pipedriveStageName,
+    pipedriveDealId:pdid,
     lossReason:d.loss_reason||'',
-    closeReason:(d.closure_reason||'').toString().trim(),
+    closeReason:closeReason,
     objections:(()=>{try{return JSON.parse(d.objections_with_timestamps||'[]');}catch(e){return [];}})()
   };
 }
@@ -1050,7 +1063,11 @@ function rebuildAll(){
 }
 
 function fetchDeals(){
-  return fetch(API)
+  return fetch('pipeline.json?cb='+Date.now())
+    .then(r=>r.ok?r.json():null)
+    .then(pj=>{ PIPEMAP={}; if(pj&&Array.isArray(pj.deals)){ pj.deals.forEach(x=>{ PIPEMAP[String(x.id)]={status:x.status,stage:x.stage}; }); } })
+    .catch(()=>{})
+    .then(()=>fetch(API))
     .then(r=>r.ok?r.json():null)
     .then(data=>{
       if(!data) return;
