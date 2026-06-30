@@ -114,9 +114,12 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 
     <div class="sec" id="fc-sec">
       <div class="sec-title">Forecast &mdash; open deals by expected close date</div>
-      <div style="display:flex;align-items:flex-start;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-        <span class="filter-label" style="margin-top:6px">Stage</span>
-        <div id="fcStageChips" style="display:flex;flex-wrap:wrap;gap:6px;flex:1"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+        <span class="filter-label">Stage</span>
+        <div id="fcStageDD" style="position:relative">
+          <button id="fcStageBtn" type="button" style="font-family:inherit;font-size:12.5px;font-weight:500;padding:6px 12px;border-radius:10px;border:1px solid var(--border2);background:var(--card);color:var(--text);cursor:pointer;min-width:170px;text-align:left">All stages <span style="opacity:.45">&#9662;</span></button>
+          <div id="fcStagePanel" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;min-width:240px;max-height:280px;overflow:auto;background:var(--card);border:1px solid var(--border2);border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.12);z-index:50;padding:4px 0"></div>
+        </div>
       </div>
       <div class="fc-cards" id="fcCards"></div>
       <div class="card" style="margin-top:14px">
@@ -349,23 +352,36 @@ function renderRange(){
 }
 
 function escAttr(s){return (s||'').toString().replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
-function renderFcStageChips(stages){
-  const c=document.getElementById('fcStageChips'); if(!c) return;
-  const mk=(label,val,on)=>'<button class="fcchip" data-stage="'+escAttr(val)+'" style="font-family:inherit;font-size:11px;font-weight:500;padding:4px 11px;border-radius:20px;cursor:pointer;border:1px solid '+(on?'#1a1a1a':'rgba(0,0,0,.12)')+';background:'+(on?'#1a1a1a':'#fff')+';color:'+(on?'#fff':'#888880')+'">'+escAttr(label)+'</button>';
-  let html=mk('All stages','',state.fcStages.length===0);
-  stages.forEach(s=>{ html+=mk(s,s,state.fcStages.includes(s)); });
-  c.innerHTML=html;
-  c.querySelectorAll('.fcchip').forEach(b=>b.addEventListener('click',()=>{
-    const s=b.dataset.stage;
-    if(!s){ state.fcStages=[]; }
-    else { const i=state.fcStages.indexOf(s); if(i>=0) state.fcStages.splice(i,1); else state.fcStages.push(s); }
+function stagePct(s){ const m=(s||'').match(/(\d+)\s*%/); return m?parseInt(m[1],10):Infinity; }
+function buildFcDropdown(stages){
+  const btn=document.getElementById('fcStageBtn'); const panel=document.getElementById('fcStagePanel');
+  if(!btn||!panel||btn.dataset.bound) return;
+  let html='<label style="display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:12.5px;border-bottom:1px solid var(--border)"><input type="checkbox" id="fcChkAll" style="cursor:pointer"><span>All stages</span></label>';
+  stages.forEach(s=>{ html+='<label style="display:flex;align-items:center;gap:8px;padding:7px 13px;cursor:pointer;font-size:12.5px"><input type="checkbox" class="fcChk" data-stage="'+escAttr(s)+'" style="cursor:pointer"><span>'+escAttr(s)+'</span></label>'; });
+  panel.innerHTML=html;
+  btn.addEventListener('click',e=>{ e.stopPropagation(); panel.style.display=(panel.style.display==='none'||!panel.style.display)?'block':'none'; });
+  panel.addEventListener('click',e=>e.stopPropagation());
+  document.addEventListener('click',()=>{ panel.style.display='none'; });
+  document.getElementById('fcChkAll').addEventListener('change',()=>{ state.fcStages=[]; renderForecast(); });
+  panel.querySelectorAll('.fcChk').forEach(c=>c.addEventListener('change',()=>{
+    const s=c.dataset.stage; const i=state.fcStages.indexOf(s);
+    if(c.checked){ if(i<0) state.fcStages.push(s); } else if(i>=0){ state.fcStages.splice(i,1); }
     renderForecast();
   }));
+  btn.dataset.bound='1';
+}
+function syncFcDropdown(){
+  const allOn=state.fcStages.length===0;
+  const all=document.getElementById('fcChkAll'); if(all) all.checked=allOn;
+  document.querySelectorAll('#fcStagePanel .fcChk').forEach(c=>{ c.checked=state.fcStages.indexOf(c.dataset.stage)>=0; });
+  const btn=document.getElementById('fcStageBtn');
+  if(btn){ const n=state.fcStages.length; const lbl=allOn?'All stages':(n===1?state.fcStages[0]:n+' stages selected'); btn.innerHTML=escAttr(lbl)+' <span style="opacity:.45">&#9662;</span>'; }
 }
 function renderForecast(){
   const allOpen = (DATA.deals||[]).filter(d=>activeOpen(d) && d.ecd);
-  const stages=Array.from(new Set(allOpen.map(d=>d.stage||'').filter(Boolean))).sort();
-  renderFcStageChips(stages);
+  const stages=Array.from(new Set(allOpen.map(d=>d.stage||'').filter(Boolean))).sort((a,b)=>{const pa=stagePct(a),pb=stagePct(b);return pa===pb?a.localeCompare(b):pa-pb;});
+  buildFcDropdown(stages);
+  syncFcDropdown();
   const open = allOpen.filter(d=> state.fcStages.length===0 || state.fcStages.includes(d.stage||''));
   const now=new Date(); const y=now.getFullYear(), m=now.getMonth(), q=Math.floor(m/3);
   const inMonth=d=>{const t=parseDate(d.ecd);return t&&t.getFullYear()===y&&t.getMonth()===m;};
