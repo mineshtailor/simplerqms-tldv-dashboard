@@ -312,7 +312,7 @@ function renderRange(){
   wonR.forEach(d=>{const r=R(d.owner);r.won++;r.wonVal+=(d.eur||0);});
   lostR.forEach(d=>{R(d.owner).lost++;});
   openActive.forEach(d=>{R(d.owner).openVal+=(d.eur||0);});
-  const rows=Object.entries(reps).filter(([o,r])=>r.won||r.lost||r.openVal).sort((a,b)=>b[1].wonVal-a[1].wonVal).slice(0,12);
+  const rows=Object.entries(reps).filter(([o,r])=>ACTIVE_REPS.has(o) && (r.won||r.lost||r.openVal)).sort((a,b)=>b[1].wonVal-a[1].wonVal).slice(0,12);
   const maxW=Math.max(1,...rows.map(r=>r[1].wonVal));
   let rt='<tr><th>Rep</th><th class="num">Won</th><th class="num">Won value</th><th class="num">Lost</th><th class="num">Win rate</th><th class="num">Open value</th></tr>';
   rows.forEach(([o,r])=>{const wrr=(r.won+r.lost)?Math.round(100*r.won/(r.won+r.lost)):0;const w=Math.max(4,Math.round(70*r.wonVal/maxW));rt+='<tr><td>'+o+'</td><td class="num">'+r.won+'</td><td class="num">'+eur(r.wonVal)+' <span class="bar-mini" style="width:'+w+'px"></span></td><td class="num">'+r.lost+'</td><td class="num"><span class="pill '+(wrr>=50?'g':'r')+'">'+wrr+'%</span></td><td class="num">'+eur(r.openVal)+'</td></tr>';});
