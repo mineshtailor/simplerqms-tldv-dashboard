@@ -405,6 +405,8 @@ function setupScrollSpy(){
   window.addEventListener('scroll',()=>{let cur=secs[0];secs.forEach(id=>{const el=document.getElementById(id);if(el&&el.getBoundingClientRect().top<120)cur=id;});links.forEach(l=>l.classList.toggle('active',l.getAttribute('href')==='#'+cur));});
 }
 </script>
+
+
 <!-- LEADS-INTEL-START v2 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
@@ -422,9 +424,9 @@ function setupScrollSpy(){
 #leads-intel .lq-c6{grid-column:span 6}#leads-intel .lq-c4{grid-column:span 4}#leads-intel .lq-c8{grid-column:span 8}#leads-intel .lq-c12{grid-column:span 12}
 @media(max-width:900px){#leads-intel .lq-c6,#leads-intel .lq-c4,#leads-intel .lq-c8{grid-column:span 12}}
 #leads-intel .lq-ch{position:relative;height:220px}
-#leads-intel table{width:100%;border-collapse:collapse;font-size:12.5px;color:#16283c}
-#leads-intel th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.65;text-align:left;padding:5px 6px;border-bottom:1.5px solid #dde4ea}
-#leads-intel td{padding:6px;border-bottom:1px solid #eef2f5}
+#leads-intel table{width:auto;border-collapse:collapse;font-size:12.5px;color:#16283c}
+#leads-intel th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.65;text-align:left;padding:5px 28px 5px 0;border-bottom:1.5px solid #dde4ea}
+#leads-intel td{padding:6px 28px 6px 0;border-bottom:1px solid #eef2f5}
 #leads-intel td.n{text-align:right;font-variant-numeric:tabular-nums}
 #leads-intel details{margin-top:10px;border:1px solid #dde4ea;border-radius:8px;background:#fff;color:#16283c}
 #leads-intel summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:13.5px;list-style:none}
@@ -472,13 +474,12 @@ function render(M){
   ['Converted to deal',C.convertedPct+'%',fmt(C.converted)+' of '+fmt(t.totalEver),''],
   ['Win rate (converted)',C.winRateConverted+'%',fmt(C.won)+' won · '+fmt(C.lost)+' lost · '+fmt(C.open)+' open','good'],
   ['Won value',money(C.wonValue),fmt(C.won)+' won deals','good'],
-  ['Median days to deal',med,meas+' measurable',''],
-  ['Apollo-enriched',(M.enrichment?M.enrichment.pct:0)+'%',fmt(M.enrichment?M.enrichment.enriched:0)+' of '+fmt(t.leads),'']
+  ['Median days to deal',med,meas+' measurable','']
  ].forEach(function(k){r.push('<div class="lq-kpi '+k[3]+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>');});
  r.push('</div>');
 
  r.push('<div class="lq-grid">');
- r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Leads by type (log scale)</b><div class="lq-ch"><canvas id="lq-type"></canvas></div></div>');
+ r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Leads by type</b><div class="lq-ch"><canvas id="lq-type"></canvas></div></div>');
  r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Weekly lead creation — last 12 weeks</b><div class="lq-ch"><canvas id="lq-week"></canvas></div></div>');
  r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">ICP score distribution</b><div style="font-size:11px;opacity:.65">'+fmt(M.icp.scored)+' scored · '+fmt(M.icp.unscored)+' unscored · avg '+M.icp.avg+'</div><div class="lq-ch"><canvas id="lq-icp"></canvas></div></div>');
  r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Lead → deal outcomes</b><div style="font-size:11px;opacity:.65">'+fmt(C.converted)+' converted deals from '+fmt(t.totalEver)+' leads</div><div class="lq-ch" style="height:90px"><canvas id="lq-out"></canvas></div>'+
@@ -514,8 +515,9 @@ function render(M){
 }
 function draw(M){
  var g={color:'#e7edf2'};
- new Chart(document.getElementById('lq-type'),{type:'bar',data:{labels:M.byType.map(function(x){return x.type;}),datasets:[{label:'Leads',data:M.byType.map(function(x){return x.total;}),backgroundColor:'#0e7c86',borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{type:'logarithmic',grid:g},x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}}},plugins:{legend:{display:false}}}});
- new Chart(document.getElementById('lq-week'),{type:'line',data:{labels:M.weekly.map(function(x){return x.week.slice(5);}),datasets:[{label:'Leads',data:M.weekly.map(function(x){return x.total;}),borderColor:'#0e7c86',backgroundColor:'rgba(14,124,134,.12)',fill:true,tension:.3,pointRadius:2}]},options:{maintainAspectRatio:false,scales:{y:{grid:g,beginAtZero:true},x:{grid:{display:false},ticks:{font:{size:10}}}},plugins:{legend:{display:false}}}});
+ function isoWk(s){var p=String(s).split('-W');var y=+p[0],w=+p[1]||1;var d=new Date(Date.UTC(y,0,1+(w-1)*7));var dow=d.getUTCDay();if(dow<=4)d.setUTCDate(d.getUTCDate()-dow+1);else d.setUTCDate(d.getUTCDate()+8-dow);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
+ new Chart(document.getElementById('lq-type'),{type:'bar',data:{labels:M.byType.map(function(x){return x.type;}),datasets:[{label:'Leads',data:M.byType.map(function(x){return x.total;}),backgroundColor:'#0e7c86',borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{beginAtZero:true,grid:g,ticks:{stepSize:100}},x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}}},plugins:{legend:{display:false}}}});
+ new Chart(document.getElementById('lq-week'),{type:'line',data:{labels:M.weekly.map(function(x){return isoWk(x.week);}),datasets:[{label:'Leads',data:M.weekly.map(function(x){return x.total;}),borderColor:'#0e7c86',backgroundColor:'rgba(14,124,134,.12)',fill:true,tension:.3,pointRadius:2}]},options:{maintainAspectRatio:false,scales:{y:{grid:g,beginAtZero:true},x:{grid:{display:false},ticks:{font:{size:10}}}},plugins:{legend:{display:false}}}});
  new Chart(document.getElementById('lq-icp'),{type:'bar',data:{labels:M.icp.distribution.map(function(x){return x.bucket;}),datasets:[{data:M.icp.distribution.map(function(x){return x.count;}),backgroundColor:M.icp.distribution.map(function(x){return x.bucket==='7-8'||x.bucket==='9-10'?'#c77d1f':'#0e7c86';}),borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{grid:g},x:{grid:{display:false}}},plugins:{legend:{display:false}}}});
  var C=M.conversion||{};
  new Chart(document.getElementById('lq-out'),{type:'bar',data:{labels:['Converted'],datasets:[{label:'Won',data:[C.won],backgroundColor:'#1f9d57'},{label:'Lost',data:[C.lost],backgroundColor:'#b4462f'},{label:'Open',data:[C.open],backgroundColor:'#0e7c86'}]},options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:{stacked:true,grid:g},y:{stacked:true,grid:{display:false}}},plugins:{legend:{labels:{boxWidth:9,font:{size:10}}}}}});
