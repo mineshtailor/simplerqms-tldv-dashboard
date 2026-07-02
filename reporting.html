@@ -244,21 +244,22 @@ function render(M){
    M.funnelBySource.map(function(s){return '<tr><td>'+esc(s.source)+'</td><td class="n">'+fmt(s.leads)+'</td><td class="n">'+s.conv+'</td><td class="n">'+s.won+'</td><td class="n">'+(s.leads?Math.round(s.conv/s.leads*1000)/10:0)+'%</td></tr>';}).join('')+'</table></div>');
  r.push('</div>');
 
+ r.push('<div style="font-size:12px;opacity:.6;margin:16px 0 4px">Click any section below to expand the underlying leads.</div>');
  var sh=M.staleHighIcp||[];
- r.push('<details open><summary>Proof: stale-but-hot reactivation list — '+sh.length+' leads (ICP ≥ 7, older than 90 days, still active)</summary><div class="lq-body"><table><tr><th>Lead</th><th class="n">ICP</th><th class="n">Age (days)</th><th>Type</th><th>Created by</th><th></th></tr>'+
+ r.push('<details open><summary>Reactivation candidates — '+sh.length+' leads (ICP ≥ 7, 90+ days old, still active)</summary><div class="lq-body"><table><tr><th>Lead</th><th class="n">ICP</th><th class="n">Age (days)</th><th>Type</th><th>Created by</th><th></th></tr>'+
   sh.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td class="n"><span class="lq-badge hot">'+x.icp+'</span></td><td class="n">'+x.ageDays+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+PD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+'</table></div></details>');
 
  var cp=M.convertedProof||[];
- r.push('<details><summary>Proof: leads linked to deals — '+cp.length+' leads</summary><div class="lq-body"><table><tr><th>Lead</th><th>Type</th><th>Created by</th><th class="n">Days to deal</th><th>Deal</th><th>Status</th><th></th></tr>'+
+ r.push('<details><summary>Leads linked to deals — '+cp.length+' leads</summary><div class="lq-body"><table><tr><th>Lead</th><th>Type</th><th>Created by</th><th class="n">Days to deal</th><th>Deal</th><th>Status</th><th></th></tr>'+
   cp.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.creator)+'</td><td class="n">'+(x.days==null?'—':x.days)+'</td><td>'+esc(x.dealTitle||'')+'</td><td><span class="lq-badge'+(x.dealStatus==='won'?'':' hot')+'">'+esc(x.dealStatus)+'</span></td><td><a href="'+PD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+
   '</table><div class="lq-note">Days to deal is deal creation minus lead creation; "—" = the deal predates the lead ('+(M.timeToConversion?M.timeToConversion.dealPredatesLead:0)+' cases).</div></div></details>');
 
  var dg=M.dupOrgs||[];
- r.push('<details><summary>Proof: duplicate-organisation lead groups — '+dg.length+' groups</summary><div class="lq-body"><table><tr><th>Group</th><th class="n">Leads</th><th>Sample titles</th></tr>'+
+ r.push('<details><summary>Duplicate organisations — '+dg.length+' groups</summary><div class="lq-body"><table><tr><th>Group</th><th class="n">Leads</th><th>Sample titles</th></tr>'+
   dg.map(function(g){return '<tr><td>'+esc(g.key)+' <span style="opacity:.5;font-size:10px">('+g.kind+')</span></td><td class="n">'+g.count+'</td><td>'+g.titles.map(esc).join(' · ')+'</td></tr>';}).join('')+'</table></div></details>');
 
  var pe=M.publicEmailProof||[];
- r.push('<details><summary>Proof: public-domain email sample — '+fmt(t.publicEmail)+' total, showing '+pe.length+'</summary><div class="lq-body"><table><tr><th>Lead</th><th>Domain</th><th>Created by</th></tr>'+
+ r.push('<details><summary>Public-domain emails — '+fmt(t.publicEmail)+' total, showing '+pe.length+'</summary><div class="lq-body"><table><tr><th>Lead</th><th>Domain</th><th>Created by</th></tr>'+
   pe.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.domain)+'</td><td>'+esc(x.creator)+'</td></tr>';}).join('')+'</table></div></details>');
 
  document.getElementById('lq-root').innerHTML=r.join('');
