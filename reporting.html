@@ -179,21 +179,102 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
     </div>
 
     <div class="sec" id="leads-sec">
-      <div class="sec-title">Leads <span id="rangeLabel4">YTD</span></div>
-      <div class="grid2">
-        <div class="card">
-          <h3>Lead types we're getting</h3>
-          <div class="hint">By Lead Type custom field, leads created in range</div>
-          <div class="chart-box"><canvas id="leadType"></canvas></div>
-        </div>
-        <div class="card">
-          <h3>Leads created by month</h3>
-          <div class="hint">New leads by creation month</div>
-          <div class="chart-box"><canvas id="leadsByMonth"></canvas></div>
-        </div>
-      </div>
-      <div class="note" id="convNote"></div>
-    </div>
+      <div style="display:none" aria-hidden="true"><span id="rangeLabel4"></span><canvas id="leadType"></canvas><canvas id="leadsByMonth"></canvas><div id="convNote"></div></div>
+<!-- LEADS-INTEL-START v1 -->
+<section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
+<style>
+#leads-intel .lq-card{background:#fff;border:1px solid #dde4ea;border-radius:8px;padding:16px;color:#16283c}
+#leads-intel h2{font-size:20px;margin:0 0 2px;color:inherit}
+#leads-intel .lq-sub{font-size:12px;opacity:.7;margin-bottom:14px}
+#leads-intel .lq-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:14px}
+#leads-intel .lq-kpi{background:#fff;border:1px solid #dde4ea;border-top:3px solid #0e7c86;border-radius:8px;padding:10px 12px;color:#16283c}
+#leads-intel .lq-kpi.warn{border-top-color:#c77d1f}
+#leads-intel .lq-kpi .l{font-size:10px;letter-spacing:.07em;text-transform:uppercase;opacity:.65}
+#leads-intel .lq-kpi .v{font-size:24px;font-weight:800;margin-top:2px}
+#leads-intel .lq-kpi .s{font-size:11px;opacity:.65}
+#leads-intel .lq-grid{display:grid;grid-template-columns:repeat(12,1fr);gap:12px}
+#leads-intel .lq-c6{grid-column:span 6}#leads-intel .lq-c4{grid-column:span 4}#leads-intel .lq-c8{grid-column:span 8}#leads-intel .lq-c12{grid-column:span 12}
+@media(max-width:900px){#leads-intel .lq-c6,#leads-intel .lq-c4,#leads-intel .lq-c8{grid-column:span 12}}
+#leads-intel .lq-ch{position:relative;height:220px}
+#leads-intel table{width:100%;border-collapse:collapse;font-size:12.5px;color:#16283c}
+#leads-intel th{font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.65;text-align:left;padding:5px 6px;border-bottom:1.5px solid #dde4ea}
+#leads-intel td{padding:6px;border-bottom:1px solid #eef2f5}
+#leads-intel td.n{text-align:right;font-variant-numeric:tabular-nums}
+#leads-intel details{margin-top:10px;border:1px solid #dde4ea;border-radius:8px;background:#fff;color:#16283c}
+#leads-intel summary{cursor:pointer;padding:10px 14px;font-weight:600;font-size:13.5px;list-style:none}
+#leads-intel summary::before{content:"▸ ";color:#0e7c86}
+#leads-intel details[open] summary::before{content:"▾ "}
+#leads-intel .lq-body{padding:0 14px 14px;overflow-x:auto}
+#leads-intel a{color:#0e7c86}
+#leads-intel .lq-badge{display:inline-block;font-size:11px;padding:1px 7px;border-radius:10px;background:#e3f1f2;color:#0e7c86;font-weight:600}
+#leads-intel .lq-badge.hot{background:#fbf1e2;color:#c77d1f}
+#leads-intel .lq-note{font-size:11.5px;opacity:.65;margin-top:10px}
+</style>
+<h2>Leads Intelligence</h2>
+<div class="lq-sub" id="lq-sub">Loading leads.json…</div>
+<div id="lq-root"></div>
+<script>
+(function(){
+var PD='https://simplerqms.pipedrive.com/leads/inbox/';
+function boot(){
+ fetch('leads.json?t='+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json();}).then(render)
+ .catch(function(){document.getElementById('lq-sub').textContent='leads.json not published yet — run the "Leads Dashboard — Metrics Snapshot" workflow in n8n.';});
+}
+function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
+function fmt(n){return Number(n||0).toLocaleString('en-US');}
+function render(M){
+ var t=M.totals,r=[];
+ document.getElementById('lq-sub').textContent='Snapshot '+M.generated_at.slice(0,16).replace('T',' ')+' UTC · '+M.method_note;
+ var med=(M.timeToConversion&&M.timeToConversion.medianDays!=null)?M.timeToConversion.medianDays+'d':'—';
+ r.push('<div class="lq-kpis">');
+ [['Total leads',fmt(t.leads),fmt(t.active)+' active',''],
+  ['Linked to deal',t.convertedPct+'%',t.converted+' leads',''],
+  ['Linked to won',t.wonPct+'%',t.won+' leads',''],
+  ['Median days to deal',med,(M.timeToConversion?M.timeToConversion.samples.length:0)+' measurable','' ],
+  ['Public-domain email',t.publicEmailPct+'%',fmt(t.publicEmail)+' leads','warn'],
+  ['Apollo-enriched',(M.enrichment?M.enrichment.pct:0)+'%',fmt(M.enrichment?M.enrichment.enriched:0)+' of '+fmt(t.leads),'']
+ ].forEach(function(k){r.push('<div class="lq-kpi '+k[3]+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>');});
+ r.push('</div>');
+
+ r.push('<div class="lq-grid">');
+ r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Leads by type (log scale)</b><div class="lq-ch"><canvas id="lq-type"></canvas></div></div>');
+ r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Weekly lead creation — last 12 weeks</b><div class="lq-ch"><canvas id="lq-week"></canvas></div></div>');
+ r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">ICP score distribution</b><div style="font-size:11px;opacity:.65">'+fmt(M.icp.scored)+' scored · '+fmt(M.icp.unscored)+' unscored · avg '+M.icp.avg+'</div><div class="lq-ch"><canvas id="lq-icp"></canvas></div></div>');
+ r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Funnel by source</b><table><tr><th>Source</th><th class="n">Leads</th><th class="n">→ Deal</th><th class="n">→ Won</th><th class="n">Conv %</th></tr>'+
+   M.funnelBySource.map(function(s){return '<tr><td>'+esc(s.source)+'</td><td class="n">'+fmt(s.leads)+'</td><td class="n">'+s.conv+'</td><td class="n">'+s.won+'</td><td class="n">'+(s.leads?Math.round(s.conv/s.leads*1000)/10:0)+'%</td></tr>';}).join('')+'</table></div>');
+ r.push('</div>');
+
+ var sh=M.staleHighIcp||[];
+ r.push('<details open><summary>Proof: stale-but-hot reactivation list — '+sh.length+' leads (ICP ≥ 7, older than 90 days, still active)</summary><div class="lq-body"><table><tr><th>Lead</th><th class="n">ICP</th><th class="n">Age (days)</th><th>Type</th><th>Created by</th><th></th></tr>'+
+  sh.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td class="n"><span class="lq-badge hot">'+x.icp+'</span></td><td class="n">'+x.ageDays+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+PD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+'</table></div></details>');
+
+ var cp=M.convertedProof||[];
+ r.push('<details><summary>Proof: leads linked to deals — '+cp.length+' leads</summary><div class="lq-body"><table><tr><th>Lead</th><th>Type</th><th>Created by</th><th class="n">Days to deal</th><th>Deal</th><th>Status</th><th></th></tr>'+
+  cp.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.creator)+'</td><td class="n">'+(x.days==null?'—':x.days)+'</td><td>'+esc(x.dealTitle||'')+'</td><td><span class="lq-badge'+(x.dealStatus==='won'?'':' hot')+'">'+esc(x.dealStatus)+'</span></td><td><a href="'+PD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+
+  '</table><div class="lq-note">Days to deal is deal creation minus lead creation; "—" = the deal predates the lead ('+(M.timeToConversion?M.timeToConversion.dealPredatesLead:0)+' cases).</div></div></details>');
+
+ var dg=M.dupOrgs||[];
+ r.push('<details><summary>Proof: duplicate-organisation lead groups — '+dg.length+' groups</summary><div class="lq-body"><table><tr><th>Group</th><th class="n">Leads</th><th>Sample titles</th></tr>'+
+  dg.map(function(g){return '<tr><td>'+esc(g.key)+' <span style="opacity:.5;font-size:10px">('+g.kind+')</span></td><td class="n">'+g.count+'</td><td>'+g.titles.map(esc).join(' · ')+'</td></tr>';}).join('')+'</table></div></details>');
+
+ var pe=M.publicEmailProof||[];
+ r.push('<details><summary>Proof: public-domain email sample — '+fmt(t.publicEmail)+' total, showing '+pe.length+'</summary><div class="lq-body"><table><tr><th>Lead</th><th>Domain</th><th>Created by</th></tr>'+
+  pe.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.domain)+'</td><td>'+esc(x.creator)+'</td></tr>';}).join('')+'</table></div></details>');
+
+ document.getElementById('lq-root').innerHTML=r.join('');
+ draw(M);
+}
+function draw(M){
+ var g={color:'#e7edf2'};
+ new Chart(document.getElementById('lq-type'),{type:'bar',data:{labels:M.byType.map(function(x){return x.type;}),datasets:[{label:'Leads',data:M.byType.map(function(x){return x.total;}),backgroundColor:'#0e7c86',borderRadius:3},{label:'→ Deal',data:M.byType.map(function(x){return x.conv;}),backgroundColor:'#c77d1f',borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{type:'logarithmic',grid:g},x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}}},plugins:{legend:{labels:{boxWidth:9,font:{size:10}}}}}});
+ new Chart(document.getElementById('lq-week'),{type:'line',data:{labels:M.weekly.map(function(x){return x.week.slice(5);}),datasets:[{label:'Leads',data:M.weekly.map(function(x){return x.total;}),borderColor:'#0e7c86',backgroundColor:'rgba(14,124,134,.12)',fill:true,tension:.3,pointRadius:2}]},options:{maintainAspectRatio:false,scales:{y:{grid:g,beginAtZero:true},x:{grid:{display:false},ticks:{font:{size:10}}}},plugins:{legend:{display:false}}}});
+ new Chart(document.getElementById('lq-icp'),{type:'bar',data:{labels:M.icp.distribution.map(function(x){return x.bucket;}),datasets:[{data:M.icp.distribution.map(function(x){return x.count;}),backgroundColor:M.icp.distribution.map(function(x){return x.bucket==='7-8'||x.bucket==='9-10'?'#c77d1f':'#0e7c86';}),borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{grid:g},x:{grid:{display:false}}},plugins:{legend:{display:false}}}});
+}
+if(window.Chart){boot();}else{var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';s.onload=boot;document.head.appendChild(s);}
+})();
+</script>
+</section>
+<!-- LEADS-INTEL-END v1 -->
 
     <div class="foot" id="foot"></div>
   </div>
