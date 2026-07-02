@@ -216,6 +216,7 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
 <script>
 (function(){
 var PD='https://simplerqms.pipedrive.com/leads/inbox/';
+var DEAL='https://simplerqms.pipedrive.com/deal/';
 function boot(){
  fetch('leads.json?t='+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json();}).then(render)
  .catch(function(){document.getElementById('lq-sub').textContent='leads.json not published yet — run the "Leads Dashboard — Metrics Snapshot" workflow in n8n.';});
@@ -227,12 +228,10 @@ function render(M){
  document.getElementById('lq-sub').textContent='Snapshot '+M.generated_at.slice(0,16).replace('T',' ')+' UTC · '+M.method_note;
  var med=(M.timeToConversion&&M.timeToConversion.medianDays!=null)?M.timeToConversion.medianDays+'d':'—';
  r.push('<div class="lq-kpis">');
- [['Total leads',fmt(t.leads),fmt(t.active)+' active',''],
-  ['Linked to deal',t.convertedPct+'%',t.converted+' leads',''],
-  ['Linked to won',t.wonPct+'%',t.won+' leads',''],
-  ['Median days to deal',med,(M.timeToConversion?M.timeToConversion.samples.length:0)+' measurable','' ],
-  ['Public-domain email',t.publicEmailPct+'%',fmt(t.publicEmail)+' leads','warn'],
-  ['Apollo-enriched',(M.enrichment?M.enrichment.pct:0)+'%',fmt(M.enrichment?M.enrichment.enriched:0)+' of '+fmt(t.leads),'']
+ [['Total leads (all-time)',fmt(t.totalEver),fmt(t.leads)+' in inbox \u00b7 '+fmt(t.converted)+' converted',''],
+  ['Converted to deal',t.convertedPct+'%',fmt(t.converted)+' of '+fmt(t.totalEver)+' leads',''],
+  ['Won from leads',fmt(t.won),t.winRateConverted+'% of converted',''],
+  ['Public-domain email',t.publicEmailPct+'%',fmt(t.publicEmail)+' leads','warn']
  ].forEach(function(k){r.push('<div class="lq-kpi '+k[3]+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>');});
  r.push('</div>');
 
@@ -240,8 +239,9 @@ function render(M){
  r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Leads by type (log scale)</b><div class="lq-ch"><canvas id="lq-type"></canvas></div></div>');
  r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Weekly lead creation — last 12 weeks</b><div class="lq-ch"><canvas id="lq-week"></canvas></div></div>');
  r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">ICP score distribution</b><div style="font-size:11px;opacity:.65">'+fmt(M.icp.scored)+' scored · '+fmt(M.icp.unscored)+' unscored · avg '+M.icp.avg+'</div><div class="lq-ch"><canvas id="lq-icp"></canvas></div></div>');
- r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Funnel by source</b><table><tr><th>Source</th><th class="n">Leads</th><th class="n">→ Deal</th><th class="n">→ Won</th><th class="n">Conv %</th></tr>'+
-   M.funnelBySource.map(function(s){return '<tr><td>'+esc(s.source)+'</td><td class="n">'+fmt(s.leads)+'</td><td class="n">'+s.conv+'</td><td class="n">'+s.won+'</td><td class="n">'+(s.leads?Math.round(s.conv/s.leads*1000)/10:0)+'%</td></tr>';}).join('')+'</table></div>');
+ var cv=M.conversion||{converted:0,won:0,open:0,lost:0,wonValue:{}};
+ r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Lead → deal outcomes</b><div style="font-size:11px;opacity:.65">Of '+fmt(cv.converted)+' leads that became deals</div><table><tr><th>Outcome</th><th class="n">Deals</th><th class="n">Share</th></tr>'+
+   [['Won',cv.won],['Open',cv.open],['Lost',cv.lost]].map(function(o){return '<tr><td>'+o[0]+'</td><td class="n">'+fmt(o[1])+'</td><td class="n">'+(cv.converted?Math.round(o[1]/cv.converted*1000)/10:0)+'%</td></tr>';}).join('')+'</table><div class="lq-note">Won value: '+(Object.keys(cv.won[wonValue]||{}).length?Object.keys(cv.wonValue).map(function(c){return fmt(Math.round(cv.wonValue[c]))+' '+c;}).join(' · '):'—')+'</div></div>');
  r.push('</div>');
 
  r.push('<div style="font-size:12px;opacity:.6;margin:16px 0 4px">Click any section below to expand the underlying leads.</div>');
@@ -250,9 +250,9 @@ function render(M){
   sh.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td class="n"><span class="lq-badge hot">'+x.icp+'</span></td><td class="n">'+x.ageDays+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+PD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+'</table></div></details>');
 
  var cp=M.convertedProof||[];
- r.push('<details><summary>Leads linked to deals — '+cp.length+' leads</summary><div class="lq-body"><table><tr><th>Lead</th><th>Type</th><th>Created by</th><th class="n">Days to deal</th><th>Deal</th><th>Status</th><th></th></tr>'+
-  cp.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.creator)+'</td><td class="n">'+(x.days==null?'—':x.days)+'</td><td>'+esc(x.dealTitle||'')+'</td><td><span class="lq-badge'+(x.dealStatus==='won'?'':' hot')+'">'+esc(x.dealStatus)+'</span></td><td><a href="'+PD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+
-  '</table><div class="lq-note">Days to deal is deal creation minus lead creation; "—" = the deal predates the lead ('+(M.timeToConversion?M.timeToConversion.dealPredatesLead:0)+' cases).</div></div></details>');
+ r.push('<details><summary>Converted leads → deals — '+((M.conversion&&M.conversion.converted)||cp.length)+' total, showing '+cp.length+'</summary><div class="lq-body"><table><tr><th>Deal (from lead)</th><th>Status</th><th class="n">Value</th><th>Created</th><th></th></tr>'+
+  cp.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td><span class="lq-badge'+(x.status==='won'?'':' hot')+'">'+esc(x.status)+'</span></td><td class="n">'+(x.value?fmt(x.value)+' '+esc(x.currency):'—')+'</td><td>'+esc(x.add)+'</td><td><a href="'+DEAL+x.id+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+
+  '</table><div class="lq-note">Counted from deals created out of a lead (Pipedrive source_lead_id). Showing the '+cp.length+' most recent.</div></div></details>');
 
  var dg=M.dupOrgs||[];
  r.push('<details><summary>Duplicate organisations — '+dg.length+' groups</summary><div class="lq-body"><table><tr><th>Group</th><th class="n">Leads</th><th>Sample titles</th></tr>'+
@@ -267,7 +267,7 @@ function render(M){
 }
 function draw(M){
  var g={color:'#e7edf2'};
- new Chart(document.getElementById('lq-type'),{type:'bar',data:{labels:M.byType.map(function(x){return x.type;}),datasets:[{label:'Leads',data:M.byType.map(function(x){return x.total;}),backgroundColor:'#0e7c86',borderRadius:3},{label:'→ Deal',data:M.byType.map(function(x){return x.conv;}),backgroundColor:'#c77d1f',borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{type:'logarithmic',grid:g},x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}}},plugins:{legend:{labels:{boxWidth:9,font:{size:10}}}}}});
+ new Chart(document.getElementById('lq-type'),{type:'bar',data:{labels:M.byType.map(function(x){return x.type;}),datasets:[{label:'Leads',data:M.byType.map(function(x){return x.total;}),backgroundColor:'#0e7c86',borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{type:'logarithmic',grid:g},x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}}},plugins:{legend:{display:false}}}});
  new Chart(document.getElementById('lq-week'),{type:'line',data:{labels:M.weekly.map(function(x){return x.week.slice(5);}),datasets:[{label:'Leads',data:M.weekly.map(function(x){return x.total;}),borderColor:'#0e7c86',backgroundColor:'rgba(14,124,134,.12)',fill:true,tension:.3,pointRadius:2}]},options:{maintainAspectRatio:false,scales:{y:{grid:g,beginAtZero:true},x:{grid:{display:false},ticks:{font:{size:10}}}},plugins:{legend:{display:false}}}});
  new Chart(document.getElementById('lq-icp'),{type:'bar',data:{labels:M.icp.distribution.map(function(x){return x.bucket;}),datasets:[{data:M.icp.distribution.map(function(x){return x.count;}),backgroundColor:M.icp.distribution.map(function(x){return x.bucket==='7-8'||x.bucket==='9-10'?'#c77d1f':'#0e7c86';}),borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{grid:g},x:{grid:{display:false}}},plugins:{legend:{display:false}}}});
 }
