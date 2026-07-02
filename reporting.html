@@ -409,6 +409,8 @@ function setupScrollSpy(){
 
 
 
+
+
 <!-- LEADS-INTEL-START v2 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
@@ -512,7 +514,7 @@ function render(M){
   '</table><div class="lq-note">Highlighted rows = Manuel / Regine. \u201cLinked to a deal\u201d counts inbox leads whose contact also sits on a deal; an exact per-creator conversion rate needs lead-history tracking (converted leads leave the inbox), which is off for now.</div></div></details>');
 
  var al=M.archivedLeads||[]; var abr=M.archivedByReason||[];
- r.push('<details><summary>Archived leads — '+al.length+' with an archive reason</summary><div class="lq-body">'+
+ r.push('<details><summary>Archived leads \u2014 '+al.length+' with an archive reason</summary><div class="lq-body">'+
   (abr.length?('<table><tr><th>Reason</th><th class="n">Leads</th></tr>'+abr.map(function(x){return '<tr><td>'+esc(x.reason)+'</td><td class="n">'+x.count+'</td></tr>';}).join('')+'</table>'):'')+
   (al.length?('<table style="margin-top:10px"><tr><th>Lead</th><th>Reason</th><th>Notes</th><th>Created by</th><th></th></tr>'+al.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.reason)+'</td><td>'+esc(x.desc)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+LEAD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open \u2197</a></td></tr>';}).join('')+'</table>'):'<div class="lq-note">No leads currently carry a Lead Archive Reason. Your team converts or deletes rather than archiving, so this fills in as leads are archived with a reason.</div>')+
   '</div></details>');
@@ -521,6 +523,11 @@ function render(M){
  r.push('<details><summary>Has activity but still New \u2014 '+abn.length+' leads (Stage = Lead, Status = New)</summary><div class="lq-body">'+
   (abn.length?('<table><tr><th>Lead</th><th>Created by</th><th></th></tr>'+abn.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+LEAD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open \u2197</a></td></tr>';}).join('')+'</table>'):'<div class="lq-note">No leads are stuck at Stage = Lead / Status = New with a scheduled activity right now.</div>')+
   '<div class="lq-note">These have an upcoming activity scheduled but were never moved out of New/Lead \u2014 a pipeline-hygiene gap. Broadens to include completed-only activities once the activities feed is connected (item 9).</div></div></details>');
+
+ var ov=M.overdueActivity||[];
+ r.push('<details><summary>Overdue activities \u2014 '+ov.length+' leads with a past-due open activity</summary><div class="lq-body">'+
+  (ov.length?('<table><tr><th>Lead</th><th>Oldest due</th><th class="n">Overdue</th><th>Activity</th><th>Created by</th><th></th></tr>'+ov.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.due)+'</td><td class="n">'+x.count+'</td><td>'+esc(x.subject)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+LEAD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open \u2197</a></td></tr>';}).join('')+'</table>'):('<div class="lq-note">'+(M.activitiesConnected?'No leads have a past-due open activity right now.':'Activities feed not connected yet \u2014 attach the Pipedrive credential to the \u201cFetch Activities\u201d node in n8n and re-run to populate this.')+'</div>'))+
+  '</div></details>');
 
  var dg=M.dupOrgs||[];
  r.push('<details><summary>Duplicate organisations — '+dg.length+' groups</summary><div class="lq-body"><table><tr><th>Group</th><th class="n">Leads</th><th>Sample titles</th></tr>'+
