@@ -407,6 +407,8 @@ function setupScrollSpy(){
 </script>
 
 
+
+
 <!-- LEADS-INTEL-START v2 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
@@ -501,6 +503,24 @@ function render(M){
  r.push('<details><summary>Converted leads → deals — '+fmt(C.converted)+' total, showing '+cp.length+' most recent</summary><div class="lq-body"><table><tr><th>Deal</th><th>Status</th><th class="n">Value</th><th class="n">Created</th><th></th></tr>'+
   cp.map(function(x){var cls=x.status==='won'?'won':(x.status==='lost'?'lost':'');var val=x.value?((x.currency?({EUR:'€',USD:'$',GBP:'£'}[x.currency]||x.currency+' '):'')+fmt(x.value)):'—';return '<tr><td>'+esc(x.title)+'</td><td><span class="lq-badge '+cls+'">'+esc(x.status)+'</span></td><td class="n">'+val+'</td><td class="n">'+esc(x.add)+'</td><td><a href="'+DEAL+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+
   '</table><div class="lq-note">These are Pipedrive deals carrying a source_lead_id (i.e. created from a lead). Value shown for won/open deals; '+(M.timeToConversion?M.timeToConversion.dealPredatesLead:0)+' converted deals predate their lead and are excluded from days-to-deal.</div></div></details>');
+
+ var bc=M.byCreator||[];
+ var isKey=function(n){return /manuel|manny|regine/i.test(n);};
+ var bcTop=bc.slice(0,15);
+ r.push('<details open><summary>Leads by creator \u2014 who is generating leads</summary><div class="lq-body"><table><tr><th>Creator</th><th class="n">Leads</th><th class="n">Linked to a deal</th></tr>'+
+  bcTop.map(function(x){var h=isKey(x.name);return '<tr'+(h?' style="background:#fbf1e2"':'')+'><td>'+(h?'<b>':'')+esc(x.name)+(h?'</b>':'')+'</td><td class="n">'+fmt(x.total)+'</td><td class="n">'+fmt(x.conv)+'</td></tr>';}).join('')+
+  '</table><div class="lq-note">Highlighted rows = Manuel / Regine. \u201cLinked to a deal\u201d counts inbox leads whose contact also sits on a deal; an exact per-creator conversion rate needs lead-history tracking (converted leads leave the inbox), which is off for now.</div></div></details>');
+
+ var al=M.archivedLeads||[]; var abr=M.archivedByReason||[];
+ r.push('<details><summary>Archived leads — '+al.length+' with an archive reason</summary><div class="lq-body">'+
+  (abr.length?('<table><tr><th>Reason</th><th class="n">Leads</th></tr>'+abr.map(function(x){return '<tr><td>'+esc(x.reason)+'</td><td class="n">'+x.count+'</td></tr>';}).join('')+'</table>'):'')+
+  (al.length?('<table style="margin-top:10px"><tr><th>Lead</th><th>Reason</th><th>Notes</th><th>Created by</th><th></th></tr>'+al.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.reason)+'</td><td>'+esc(x.desc)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+LEAD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open \u2197</a></td></tr>';}).join('')+'</table>'):'<div class="lq-note">No leads currently carry a Lead Archive Reason. Your team converts or deletes rather than archiving, so this fills in as leads are archived with a reason.</div>')+
+  '</div></details>');
+
+ var abn=M.activityButNew||[];
+ r.push('<details><summary>Has activity but still New \u2014 '+abn.length+' leads (Stage = Lead, Status = New)</summary><div class="lq-body">'+
+  (abn.length?('<table><tr><th>Lead</th><th>Created by</th><th></th></tr>'+abn.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+LEAD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open \u2197</a></td></tr>';}).join('')+'</table>'):'<div class="lq-note">No leads are stuck at Stage = Lead / Status = New with a scheduled activity right now.</div>')+
+  '<div class="lq-note">These have an upcoming activity scheduled but were never moved out of New/Lead \u2014 a pipeline-hygiene gap. Broadens to include completed-only activities once the activities feed is connected (item 9).</div></div></details>');
 
  var dg=M.dupOrgs||[];
  r.push('<details><summary>Duplicate organisations — '+dg.length+' groups</summary><div class="lq-body"><table><tr><th>Group</th><th class="n">Leads</th><th>Sample titles</th></tr>'+
