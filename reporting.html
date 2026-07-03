@@ -427,6 +427,8 @@ function setupScrollSpy(){
 
 
 
+
+
 <!-- LEADS-INTEL-START v3 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
@@ -438,6 +440,8 @@ function setupScrollSpy(){
 #leads-intel .lq-seg button{appearance:none;border:0;background:transparent;color:#41525f;font:inherit;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer}
 #leads-intel .lq-seg button.on{background:#0e7c86;color:#fff}
 #leads-intel .lq-range{font-size:11.5px;opacity:.7}
+#leads-intel .lq-custom{align-items:center;gap:5px}
+#leads-intel .lq-custom input{font:inherit;font-size:12px;padding:3px 6px;border:1px solid #dde4ea;border-radius:6px;color:#16283c;background:#fff}
 #leads-intel .lq-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
 #leads-intel .lq-kpi{background:#fff;border:1px solid #dde4ea;border-top:3px solid #0e7c86;border-radius:8px;padding:10px 12px;color:#16283c}
 #leads-intel .lq-kpi.warn{border-top-color:#c77d1f}
@@ -479,6 +483,10 @@ function setupScrollSpy(){
 <button data-m="quarter">Quarterly</button>
 <button data-m="year">Yearly</button>
 <button data-m="all" class="on">All time</button>
+<button data-m="custom">Custom</button>
+</span>
+<span class="lq-custom" id="lq-custom" style="display:none">
+<input type="date" id="lq-from"><span style="opacity:.45">→</span><input type="date" id="lq-to">
 </span>
 <span class="lq-range" id="lq-range"></span>
 </div>
@@ -487,7 +495,7 @@ function setupScrollSpy(){
 (function(){
 var LEAD='https://simplerqms.pipedrive.com/leads/inbox/';
 var DEAL='https://simplerqms.pipedrive.com/deal/';
-var M=null, MODE='all', CHARTS=[];
+var M=null, MODE='all', CHARTS=[], CUSTOM={start:null,end:null};
 function boot(){
 fetch('leads.json?t='+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){M=d;start();})
 .catch(function(){document.getElementById('lq-sub').textContent='leads.json not published yet — run the "Leads Intelligence — Feed + App Section" workflow in n8n.';});
@@ -523,6 +531,7 @@ function fmtDate(ymd){var P=parts(ymd);var mn=['Jan','Feb','Mar','Apr','May','Ju
 function rangeLabel(mode){
 var n=new Date();var y=n.getFullYear();
 if(mode==='all') return 'all leads, all time';
+if(mode==='custom'){ if(!CUSTOM.start||!CUSTOM.end) return 'pick a start and end date'; return fmtDate(CUSTOM.start)+' – '+fmtDate(CUSTOM.end)+', '+parts(CUSTOM.end).y; }
 if(mode==='year') return 'Jan 1 – Dec 31, '+y;
 if(mode==='month'){var last=new Date(y,n.getMonth()+1,0).getDate();return fmtDate(y+'-'+pad(n.getMonth()+1)+'-01')+' – '+fmtDate(y+'-'+pad(n.getMonth()+1)+'-'+pad(last))+', '+y;}
 if(mode==='quarter'){var q=Math.floor(n.getMonth()/3);var sm=q*3,em=q*3+2;var last2=new Date(y,em+1,0).getDate();return 'Q'+(q+1)+' · '+fmtDate(y+'-'+pad(sm+1)+'-01')+' – '+fmtDate(y+'-'+pad(em+1)+'-'+pad(last2))+', '+y;}
@@ -553,6 +562,14 @@ if(mode==='year'){
 for(i=0;i<12;i++){out.push({key:y+'-'+pad(i+1),label:mn[i]});}
 return {axis:out,keyer:function(ds){var P=parts(ds);return P.y+'-'+pad(P.m);}};
 }
+if(mode==='custom'){
+var cs=CUSTOM.start,ce=CUSTOM.end; if(!cs||!ce) return {axis:[],keyer:function(ds){return ds;}};
+var ps=parts(cs),pe=parts(ce);var sD=new Date(Date.UTC(ps.y,ps.m-1,ps.d)),eD=new Date(Date.UTC(pe.y,pe.m-1,pe.d));
+var span=Math.round((eD-sD)/86400000);
+if(span<=45){var d0=new Date(sD);while(d0<=eD){out.push({key:d0.getUTCFullYear()+'-'+pad(d0.getUTCMonth()+1)+'-'+pad(d0.getUTCDate()),label:(d0.getUTCMonth()+1)+'/'+d0.getUTCDate()});d0.setUTCDate(d0.getUTCDate()+1);}return {axis:out,keyer:function(ds){return ds;}};}
+if(span<=200){var seen={},c=new Date(sD);while(c<=eD){var wk=isoWeekKey(c);if(!seen[wk]){seen[wk]=1;out.push({key:wk,label:mn[c.getUTCMonth()]+' '+c.getUTCDate()});}c.setUTCDate(c.getUTCDate()+7);}return {axis:out,keyer:function(ds){var P=parts(ds);return isoWeekKey(new Date(Date.UTC(P.y,P.m-1,P.d)));}};}
+var cm=new Date(Date.UTC(ps.y,ps.m-1,1));while(cm<=eD){out.push({key:cm.getUTCFullYear()+'-'+pad(cm.getUTCMonth()+1),label:mn[cm.getUTCMonth()]+' '+String(cm.getUTCFullYear()).slice(2)});cm.setUTCMonth(cm.getUTCMonth()+1);}return {axis:out,keyer:function(ds){var P=parts(ds);return P.y+'-'+pad(P.m);}};
+}
 var months={};(M.records.leads||[]).forEach(function(l){if(l.d){var P=parts(l.d);months[P.y+'-'+pad(P.m)]=1;}});
 var keys=Object.keys(months).sort().slice(-18);
 keys.forEach(function(k){var P=k.split('-');out.push({key:k,label:mn[(+P[1])-1]+' '+String(P[0]).slice(2)});});
@@ -561,8 +578,10 @@ return {axis:out,keyer:function(ds){var P=parts(ds);return P.y+'-'+pad(P.m);}};
 function aggregate(mode){
 var R=M.records||{leads:[],deals:[]};
 var ck=curKey(mode);
-var LW=R.leads.filter(function(l){return mode==='all'?true:(l.d&&pk(l.d,mode)===ck);});
-var DW=R.deals.filter(function(d){var b=d.ld||d.d;return mode==='all'?true:(b&&pk(b,mode)===ck);});
+var cs=CUSTOM.start,ce=CUSTOM.end;
+function inW(ds){ if(mode==='all')return true; if(!ds)return false; if(mode==='custom')return !!(cs&&ce&&ds>=cs&&ds<=ce); return pk(ds,mode)===ck; }
+var LW=R.leads.filter(function(l){return inW(l.d);});
+var DW=R.deals.filter(function(d){return inW(d.ld||d.d);});
 var byType={},byCreator={},byOwner={},funnel={},icpDist={'0-2':0,'3-4':0,'5-6':0,'7-8':0,'9-10':0},pubDom={};
 var ageBuckets={'0-7d':0,'8-30d':0,'31-90d':0,'91-180d':0,'180d+':0};
 var withEmail=0,pubEmail=0,corpEmail=0,noPerson=0,enriched=0,icpScored=0,icpSum=0,hiIcp=0,hiIcpConv=0,loIcp=0,loIcpConv=0;
@@ -628,12 +647,18 @@ render(M);draw(M);return;
 }
 document.getElementById('lq-filter').style.display='flex';
 var seg=document.getElementById('lq-seg');
+var cust=document.getElementById('lq-custom'),fromI=document.getElementById('lq-from'),toI=document.getElementById('lq-to');
+function applyCustom(){ CUSTOM.start=fromI.value||null; CUSTOM.end=toI.value||null; if(CUSTOM.start&&CUSTOM.end&&CUSTOM.start>CUSTOM.end){var t=CUSTOM.start;CUSTOM.start=CUSTOM.end;CUSTOM.end=t;fromI.value=CUSTOM.start;toI.value=CUSTOM.end;} update(); }
+fromI.addEventListener('change',applyCustom); toI.addEventListener('change',applyCustom);
 seg.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;MODE=b.getAttribute('data-m');
 Array.prototype.forEach.call(seg.querySelectorAll('button'),function(x){x.classList.toggle('on',x===b);});
+cust.style.display=(MODE==='custom')?'inline-flex':'none';
+if(MODE==='custom'){ if(!fromI.value){var n=new Date();var tv=n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate());var sv=new Date(n.getTime()-29*86400000);fromI.value=sv.getFullYear()+'-'+pad(sv.getMonth()+1)+'-'+pad(sv.getDate());toI.value=tv;} CUSTOM.start=fromI.value;CUSTOM.end=toI.value; }
 update();});
 update();
 }
 function update(){
+if(MODE==='custom'&&(!CUSTOM.start||!CUSTOM.end)){ document.getElementById('lq-range').textContent='· pick a start and end date'; CHARTS.forEach(function(c){try{c.destroy();}catch(e){}});CHARTS=[]; document.getElementById('lq-root').innerHTML='<div class="lq-note" style="padding:8px 0">Pick a start and end date above to see this range.</div>'; return; }
 var V=aggregate(MODE);
 document.getElementById('lq-range').textContent='· '+rangeLabel(MODE);
 document.getElementById('lq-sub').textContent='Snapshot '+(M.generated_at||'').slice(0,16).replace('T',' ')+' UTC · '+fmt(V.totals.leads)+' leads in window · converted-cohort view';
@@ -657,7 +682,7 @@ if(immature)r.push('<div class="lq-note" style="margin:-6px 0 12px">Short window
 
 r.push('<div class="lq-grid">');
 r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Leads by type</b><div class="lq-ch"><canvas id="lq-type"></canvas></div></div>');
-var vlabel={week:'daily · this week',month:'daily · this month',quarter:'weekly · this quarter',year:'monthly · this year',all:'monthly'}[V.mode];
+var vlabel={week:'daily · this week',month:'daily · this month',quarter:'weekly · this quarter',year:'monthly · this year',all:'monthly',custom:'over range'}[V.mode];
 r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Lead creation — '+vlabel+'</b><div class="lq-ch"><canvas id="lq-week"></canvas></div></div>');
 r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">ICP score distribution</b><div style="font-size:11px;opacity:.65">'+fmt(V.icp.scored)+' scored · '+fmt(V.icp.unscored)+' unscored · avg '+V.icp.avg+'</div><div class="lq-ch"><canvas id="lq-icp"></canvas></div></div>');
 r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Lead → deal outcomes</b><div style="font-size:11px;opacity:.65">'+fmt(C.converted)+' converted deals from '+fmt(t.totalEver)+' leads</div><div class="lq-ch" style="height:90px"><canvas id="lq-out"></canvas></div>'+
@@ -677,7 +702,7 @@ r.push('<details open><summary>Reactivation candidates — '+sh.length+' leads (
 var cp=V.convertedProof||[];
 r.push('<details><summary>Converted leads → deals — '+fmt(C.converted)+' total, showing '+cp.length+' most recent</summary><div class="lq-body"><table><tr><th>Deal</th><th>Status</th><th class="n">Value</th><th class="n">Created</th><th></th></tr>'+
 cp.map(function(x){var cls=x.status==='won'?'won':(x.status==='lost'?'lost':'');var val=x.value?((x.currency?({EUR:'€',USD:'$',GBP:'£'}[x.currency]||x.currency+' '):'')+fmt(x.value)):'—';return '<tr><td>'+esc(x.title)+'</td><td><span class="lq-badge '+cls+'">'+esc(x.status)+'</span></td><td class="n">'+val+'</td><td class="n">'+esc(x.add)+'</td><td><a href="'+DEAL+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+
-'</table><div class="lq-note">Deals created from a lead, whose deal was created in the selected window.</div></div></details>');
+'</table><div class="lq-note">Deals carrying a source_lead_id (created from a lead), whose source lead was created in the selected window.</div></div></details>');
 
 var bc=V.byCreator||[];var isKey=function(n){return /manuel|manny|regine/i.test(n);};
 r.push('<details open><summary>Leads by creator — who is generating leads</summary><div class="lq-body"><table><tr><th>Creator</th><th class="n">Leads</th><th class="n">Linked to a deal</th></tr>'+
@@ -715,6 +740,5 @@ if(window.Chart){boot();}else{var s=document.createElement('script');s.src='http
 </script>
 </section>
 <!-- LEADS-INTEL-END v3 -->
-
 </body>
 </html>
