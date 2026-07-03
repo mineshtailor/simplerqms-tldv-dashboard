@@ -423,6 +423,8 @@ function setupScrollSpy(){
 
 
 
+
+
 <!-- LEADS-INTEL-START v3 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
@@ -583,8 +585,8 @@ var won=0,lost=0,open=0,wonValue={},ttc=[];
 DW.forEach(function(d){
 if(d.st==='won'){won++;var c=d.c||'EUR';wonValue[c]=(wonValue[c]||0)+(Number(d.v)||0);}
 else if(d.st==='lost')lost++;else open++;
-if(d.ld&&d.d){var P1=parts(d.ld),P2=parts(d.d);var dd=Math.round((Date.UTC(P2.y,P2.m-1,P2.d)-Date.UTC(P1.y,P1.m-1,P1.d))/86400000);if(dd>=0)ttc.push(dd);}
 });
+LW.forEach(function(l){ if(l.dtd!=null) ttc.push(l.dtd); });
 ttc.sort(function(a,b){return a-b;});
 var median=ttc.length?ttc[Math.floor((ttc.length-1)/2)]:null;
 var avg=ttc.length?Math.round(ttc.reduce(function(a,b){return a+b;},0)/ttc.length):null;
@@ -669,7 +671,7 @@ r.push('<details open><summary>Reactivation candidates — '+sh.length+' leads (
 var cp=V.convertedProof||[];
 r.push('<details><summary>Converted leads → deals — '+fmt(C.converted)+' total, showing '+cp.length+' most recent</summary><div class="lq-body"><table><tr><th>Deal</th><th>Status</th><th class="n">Value</th><th class="n">Created</th><th></th></tr>'+
 cp.map(function(x){var cls=x.status==='won'?'won':(x.status==='lost'?'lost':'');var val=x.value?((x.currency?({EUR:'€',USD:'$',GBP:'£'}[x.currency]||x.currency+' '):'')+fmt(x.value)):'—';return '<tr><td>'+esc(x.title)+'</td><td><span class="lq-badge '+cls+'">'+esc(x.status)+'</span></td><td class="n">'+val+'</td><td class="n">'+esc(x.add)+'</td><td><a href="'+DEAL+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+
-'</table><div class="lq-note">Deals carrying a source_lead_id (created from a lead), whose source lead was created in the selected window.</div></div></details>');
+'</table><div class="lq-note">Deals created from a lead, whose deal was created in the selected window.</div></div></details>');
 
 var bc=V.byCreator||[];var isKey=function(n){return /manuel|manny|regine/i.test(n);};
 r.push('<details open><summary>Leads by creator — who is generating leads</summary><div class="lq-body"><table><tr><th>Creator</th><th class="n">Leads</th><th class="n">Linked to a deal</th></tr>'+
