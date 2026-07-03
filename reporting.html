@@ -431,6 +431,7 @@ function setupScrollSpy(){
 
 
 
+
 <!-- LEADS-INTEL-START v3 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
@@ -583,8 +584,7 @@ var ck=curKey(mode);
 var cs=CUSTOM.start,ce=CUSTOM.end;
 function inW(ds){ if(mode==='all')return true; if(!ds)return false; if(mode==='custom')return !!(cs&&ce&&ds>=cs&&ds<=ce); return pk(ds,mode)===ck; }
 var LW=R.leads.filter(function(l){return inW(l.d);});
-var DW=R.deals.filter(function(d){return (d.sl==null||d.sl)?inW(d.ld||d.d):false;});
-var DA=R.deals.filter(function(d){return inW(d.d);});
+var DW=R.deals.filter(function(d){return inW(d.ld||d.d);});
 var byType={},byCreator={},byOwner={},funnel={},icpDist={'0-2':0,'3-4':0,'5-6':0,'7-8':0,'9-10':0},pubDom={};
 var ageBuckets={'0-7d':0,'8-30d':0,'31-90d':0,'91-180d':0,'180d+':0};
 var withEmail=0,pubEmail=0,corpEmail=0,noPerson=0,enriched=0,icpScored=0,icpSum=0,hiIcp=0,hiIcpConv=0,loIcp=0,loIcpConv=0;
@@ -609,14 +609,9 @@ ages.sort(function(a,b){return a-b;});
 var ageMedian=ages.length?ages[Math.floor((ages.length-1)/2)]:null;
 var ageAvg=ages.length?Math.round(ages.reduce(function(a,b){return a+b;},0)/ages.length):null;
 var won=0,lost=0,open=0,wonValue={},ttc=[];
-DA.forEach(function(d){
+DW.forEach(function(d){
 if(d.st==='won'){won++;var c=d.c||'EUR';wonValue[c]=(wonValue[c]||0)+(Number(d.v)||0);}
 else if(d.st==='lost')lost++;else open++;
-});
-var cwon=0,clost=0,copen=0,cwonValue={};
-DW.forEach(function(d){
-if(d.st==='won'){cwon++;var c2=d.c||'EUR';cwonValue[c2]=(cwonValue[c2]||0)+(Number(d.v)||0);}
-else if(d.st==='lost')clost++;else copen++;
 });
 LW.forEach(function(l){ if(l.dtd!=null) ttc.push(l.dtd); });
 ttc.sort(function(a,b){return a-b;});
@@ -630,9 +625,8 @@ var velocity={labels:va.axis.map(function(a){return a.label;}),data:va.axis.map(
 var sortObj=function(o,fn){return Object.keys(o).map(function(k){return fn(k,o[k]);}).sort(function(a,b){return b.total-a.total;});};
 return {
 mode:mode,
-totals:{leads:inbox,totalEver:totalEver,active:LW.filter(function(l){return !l.ar;}).length,archived:LW.filter(function(l){return l.ar;}).length,converted:converted,convertedPct:totalEver?Math.round(converted/totalEver*1000)/10:0,won:cwon,winRateConverted:converted?Math.round(cwon/converted*1000)/10:0,withEmail:withEmail,publicEmail:pubEmail,publicEmailPct:withEmail?Math.round(pubEmail/withEmail*1000)/10:0,corporateEmail:corpEmail,noEmailOrPerson:noPerson},
-conversion:{converted:converted,won:cwon,lost:clost,open:copen,totalEver:totalEver,inbox:inbox,convertedPct:totalEver?Math.round(converted/totalEver*1000)/10:0,winRateConverted:converted?Math.round(cwon/converted*1000)/10:0,wonValue:cwonValue},
-allDeals:{count:DA.length,won:won,lost:lost,open:open,wonValue:wonValue},
+totals:{leads:inbox,totalEver:totalEver,active:LW.filter(function(l){return !l.ar;}).length,archived:LW.filter(function(l){return l.ar;}).length,converted:converted,convertedPct:totalEver?Math.round(converted/totalEver*1000)/10:0,won:won,winRateConverted:converted?Math.round(won/converted*1000)/10:0,withEmail:withEmail,publicEmail:pubEmail,publicEmailPct:withEmail?Math.round(pubEmail/withEmail*1000)/10:0,corporateEmail:corpEmail,noEmailOrPerson:noPerson},
+conversion:{converted:converted,won:won,lost:lost,open:open,totalEver:totalEver,inbox:inbox,convertedPct:totalEver?Math.round(converted/totalEver*1000)/10:0,winRateConverted:converted?Math.round(won/converted*1000)/10:0,wonValue:wonValue},
 icp:{scored:icpScored,unscored:LW.length-icpScored,avg:icpScored?Math.round(icpSum/icpScored*10)/10:0,distribution:Object.keys(icpDist).map(function(b){return {bucket:b,count:icpDist[b]};}),highIcp:{count:hiIcp,conv:hiIcpConv},lowIcp:{count:loIcp,conv:loIcpConv}},
 enrichment:{enriched:enriched,bare:LW.length-enriched,pct:LW.length?Math.round(enriched/LW.length*1000)/10:0},
 timeToConversion:{medianDays:median,avgDays:avg,measurable:ttc.length,samples:ttc},
@@ -675,7 +669,7 @@ CHARTS.forEach(function(c){try{c.destroy();}catch(e){}});CHARTS=[];
 render(V);draw(V);
 }
 function render(V){
-var t=V.totals,C=V.conversion||{},A=V.allDeals||C,r=[];
+var t=V.totals,C=V.conversion||{},r=[];
 var immature=(V.mode==='week'||V.mode==='month');
 var lam=(V.leadAge&&V.leadAge.medianDays!=null)?V.leadAge.medianDays+'d':'—';
 var lameas=(V.leadAge?V.leadAge.measurable:0);
@@ -683,7 +677,7 @@ r.push('<div class="lq-kpis">');
 [['Leads in window',fmt(t.leads),fmt(t.converted)+' converted · '+fmt(t.totalEver)+' incl. converted',''],
 ['Converted to deal',C.convertedPct+'%',fmt(C.converted)+' of '+fmt(t.totalEver),''],
 ['Win rate (converted)',C.winRateConverted+'%',fmt(C.won)+' won · '+fmt(C.lost)+' lost · '+fmt(C.open)+' open','good'],
-['Won value (all deals)',money(A.wonValue),fmt(A.won)+' won · from leads '+money(C.wonValue),'good'],
+['Won value',money(C.wonValue),fmt(C.won)+' won deals','good'],
 ['Median lead age',lam,fmt(lameas)+' open leads','']
 ].forEach(function(k){r.push('<div class="lq-kpi '+k[3]+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>');});
 r.push('</div>');
@@ -694,8 +688,8 @@ r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Leads by type</b>
 var vlabel={week:'daily · this week',month:'daily · this month',quarter:'weekly · this quarter',year:'monthly · this year',all:'monthly',custom:'over range'}[V.mode];
 r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Lead creation — '+vlabel+'</b><div class="lq-ch"><canvas id="lq-week"></canvas></div></div>');
 r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">ICP score distribution</b><div style="font-size:11px;opacity:.65">'+fmt(V.icp.scored)+' scored · '+fmt(V.icp.unscored)+' unscored · avg '+V.icp.avg+'</div><div class="lq-ch"><canvas id="lq-icp"></canvas></div></div>');
-r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Deal outcomes — all deals</b><div style="font-size:11px;opacity:.65">'+fmt(A.count)+' deals in window · '+fmt(C.converted)+' created from leads</div><div class="lq-ch" style="height:90px"><canvas id="lq-out"></canvas></div>'+
-'<div class="lq-outkey"><span><b style="color:#1f9d57">'+fmt(A.won)+'</b> won</span><span><b style="color:#b4462f">'+fmt(A.lost)+'</b> lost</span><span><b style="color:#0e7c86">'+fmt(A.open)+'</b> open</span></div>'+
+r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Lead → deal outcomes</b><div style="font-size:11px;opacity:.65">'+fmt(C.converted)+' converted deals from '+fmt(t.totalEver)+' leads</div><div class="lq-ch" style="height:90px"><canvas id="lq-out"></canvas></div>'+
+'<div class="lq-outkey"><span><b style="color:#1f9d57">'+fmt(C.won)+'</b> won</span><span><b style="color:#b4462f">'+fmt(C.lost)+'</b> lost</span><span><b style="color:#0e7c86">'+fmt(C.open)+'</b> open</span></div>'+
 '<table style="margin-top:8px"><tr><th>Source</th><th class="n">Leads</th><th class="n">Share</th></tr>'+
 V.funnelBySource.slice(0,6).map(function(s){return '<tr><td>'+esc(s.source)+'</td><td class="n">'+fmt(s.leads)+'</td><td class="n">'+(t.leads?Math.round(s.leads/t.leads*1000)/10:0)+'%</td></tr>';}).join('')+'</table></div>');
 r.push('</div>');
@@ -742,8 +736,7 @@ CHARTS.push(new Chart(document.getElementById('lq-type'),{type:'bar',data:{label
 CHARTS.push(new Chart(document.getElementById('lq-week'),{type:'line',data:{labels:V.velocity.labels,datasets:[{label:'Leads',data:V.velocity.data,borderColor:'#0e7c86',backgroundColor:'rgba(14,124,134,.12)',fill:true,tension:.3,pointRadius:2}]},options:{maintainAspectRatio:false,scales:{y:{grid:g,beginAtZero:true},x:{grid:{display:false},ticks:{font:{size:10},maxRotation:0,autoSkip:true,maxTicksLimit:12}}},plugins:{legend:{display:false}}}}));
 CHARTS.push(new Chart(document.getElementById('lq-icp'),{type:'bar',data:{labels:V.icp.distribution.map(function(x){return x.bucket;}),datasets:[{data:V.icp.distribution.map(function(x){return x.count;}),backgroundColor:V.icp.distribution.map(function(x){return x.bucket==='7-8'||x.bucket==='9-10'?'#c77d1f':'#0e7c86';}),borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{grid:g},x:{grid:{display:false}}},plugins:{legend:{display:false}}}}));
 var C=V.conversion||{};
-var A2=V.allDeals||C;
-CHARTS.push(new Chart(document.getElementById('lq-out'),{type:'bar',data:{labels:['All deals'],datasets:[{label:'Won',data:[A2.won],backgroundColor:'#1f9d57'},{label:'Lost',data:[A2.lost],backgroundColor:'#b4462f'},{label:'Open',data:[A2.open],backgroundColor:'#0e7c86'}]},options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:{stacked:true,grid:g},y:{stacked:true,grid:{display:false}}},plugins:{legend:{labels:{boxWidth:9,font:{size:10}}}}}}));
+CHARTS.push(new Chart(document.getElementById('lq-out'),{type:'bar',data:{labels:['Converted'],datasets:[{label:'Won',data:[C.won],backgroundColor:'#1f9d57'},{label:'Lost',data:[C.lost],backgroundColor:'#b4462f'},{label:'Open',data:[C.open],backgroundColor:'#0e7c86'}]},options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:{stacked:true,grid:g},y:{stacked:true,grid:{display:false}}},plugins:{legend:{labels:{boxWidth:9,font:{size:10}}}}}}));
 }
 if(window.Chart){boot();}else{var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';s.onload=boot;document.head.appendChild(s);}
 })();
