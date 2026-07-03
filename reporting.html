@@ -417,6 +417,8 @@ function setupScrollSpy(){
 
 
 
+
+
 <!-- LEADS-INTEL-START v2 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
@@ -521,18 +523,27 @@ function render(M){
   bcTop.map(function(x){var h=isKey(x.name);return '<tr'+(h?' style="background:#fbf1e2"':'')+'><td>'+(h?'<b>':'')+esc(x.name)+(h?'</b>':'')+'</td><td class="n">'+fmt(x.total)+'</td><td class="n">'+fmt(x.conv)+'</td></tr>';}).join('')+
   '</table><div class="lq-note">Highlighted rows = Manuel / Regine. \u201cLinked to a deal\u201d counts inbox leads whose contact also sits on a deal; an exact per-creator conversion rate needs lead-history tracking (converted leads leave the inbox), which is off for now.</div></div></details>');
 
- var A=M.archived||{total:0,byType:[],bySource:[],byMonth:[],byReason:[],withReason:0};
- var col=function(title,rows){return '<div style="min-width:170px"><b style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.6">'+title+'</b><table style="margin-top:4px">'+rows+'</table></div>';};
- r.push('<details'+(A.total>0?' open':'')+'><summary>Archived leads \u2014 '+fmt(A.total)+' total</summary><div class="lq-body">'+
-  (M.archivedConnected?(
-    '<div class="lq-note" style="margin-top:0">Leads pulled with archived_status=archived. Almost all are Stage=Lead, worked then archived; the dedicated Lead Archive Reason field is filled on only '+fmt(A.withReason)+' of them, so the breakdowns below (what kind, where from, when) are the practical \u201cwhy\u201d.</div>'+
-    '<div style="display:flex;gap:28px;flex-wrap:wrap;margin-top:10px">'+
-    col('By type', A.byType.slice(0,8).map(function(x){return '<tr><td>'+esc(x.type)+'</td><td class="n">'+fmt(x.count)+'</td></tr>';}).join(''))+
-    col('By source', A.bySource.slice(0,8).map(function(x){return '<tr><td>'+esc(x.source)+'</td><td class="n">'+fmt(x.count)+'</td></tr>';}).join(''))+
-    col('Archived by month', A.byMonth.slice(-8).map(function(x){return '<tr><td>'+esc(x.month)+'</td><td class="n">'+fmt(x.count)+'</td></tr>';}).join(''))+
-    '</div>'+
-    ((A.byReason&&A.byReason.length)?('<div style="margin-top:12px">'+col('Explicit archive reasons ('+fmt(A.withReason)+')','<tr><th>Reason</th><th class="n">Leads</th></tr>'+A.byReason.map(function(x){return '<tr><td>'+esc(x.reason)+'</td><td class="n">'+fmt(x.count)+'</td></tr>';}).join(''))+'</div>'):'')
-  ):'<div class="lq-note" style="margin-top:0">Archived feed not connected yet \u2014 attach the Pipedrive credential to the \u201cFetch Archived Leads\u201d node in n8n and re-run to load the ~12,000 archived leads.</div>')+
+ var A=M.archived||{total:0,connected:false,reason:{have:0,dist:[]},reasonDesc:{have:0,dist:[]},country:{have:0,missing:0,dist:[]}};
+ var barRow=function(label,count,denom,color){var pct=denom?Math.round(count/denom*1000)/10:0;return '<tr><td>'+esc(label)+'</td><td class="n">'+fmt(count)+'</td><td class="n">'+pct+'%</td><td style="width:130px"><div style="background:#eef2f5;border-radius:4px;height:8px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+(color||'#0e7c86')+'"></div></div></td></tr>';};
+ r.push('<details open><summary>Archived leads by lost-reason \u2014 '+fmt((A.reason&&A.reason.have)||0)+' of '+fmt(A.total)+' have a reason</summary><div class="lq-body">'+
+  (A.connected?(
+    '<div class="lq-note" style="margin-top:0">A <b>Lead Archive Reason</b> is set on '+fmt(A.reason.have)+' of '+fmt(A.total)+' archived leads; shares below are of those '+fmt(A.reason.have)+'.</div>'+
+    '<table style="margin-top:10px"><tr><th>Lost reason</th><th class="n">Leads</th><th class="n">Share</th><th></th></tr>'+
+    A.reason.dist.map(function(x){return barRow(x.label,x.count,A.reason.have,'#b4462f');}).join('')+'</table>'+
+    ((A.reasonDesc&&A.reasonDesc.dist.length)?(
+      '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;margin:16px 0 4px">Reason description \u2014 free-text, '+fmt(A.reasonDesc.have)+' filled (top '+A.reasonDesc.dist.length+')</div>'+
+      '<table><tr><th>Description</th><th class="n">Leads</th></tr>'+
+      A.reasonDesc.dist.map(function(x){return '<tr><td>'+esc(x.text)+'</td><td class="n">'+fmt(x.count)+'</td></tr>';}).join('')+'</table>'
+    ):'')
+  ):'<div class="lq-note" style="margin-top:0">Archived feed not connected.</div>')+
+  '</div></details>');
+ r.push('<details open><summary>Archived leads by country of origin \u2014 '+fmt((A.country&&A.country.have)||0)+' of '+fmt(A.total)+' have a country</summary><div class="lq-body">'+
+  (A.connected?(
+    '<div class="lq-note" style="margin-top:0">Country is set on '+fmt(A.country.have)+' of '+fmt(A.total)+' archived leads ('+fmt(A.country.missing)+' blank); shares are of those '+fmt(A.country.have)+'.</div>'+
+    '<table style="margin-top:10px"><tr><th>Country</th><th class="n">Leads</th><th class="n">Share</th><th></th></tr>'+
+    A.country.dist.slice(0,15).map(function(x){return barRow(x.country,x.count,A.country.have,'#0e7c86');}).join('')+'</table>'+
+    (A.country.dist.length>15?('<div class="lq-note">+ '+(A.country.dist.length-15)+' more countries</div>'):'')
+  ):'')+
   '</div></details>');
 
  var abn=M.activityButNew||[];
