@@ -425,6 +425,8 @@ function setupScrollSpy(){
 
 
 
+
+
 <!-- LEADS-INTEL-START v3 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
@@ -564,7 +566,7 @@ var DW=R.deals.filter(function(d){var b=d.ld||d.d;return mode==='all'?true:(b&&p
 var byType={},byCreator={},byOwner={},funnel={},icpDist={'0-2':0,'3-4':0,'5-6':0,'7-8':0,'9-10':0},pubDom={};
 var ageBuckets={'0-7d':0,'8-30d':0,'31-90d':0,'91-180d':0,'180d+':0};
 var withEmail=0,pubEmail=0,corpEmail=0,noPerson=0,enriched=0,icpScored=0,icpSum=0,hiIcp=0,hiIcpConv=0,loIcp=0,loIcpConv=0;
-var stale=[],pubProof=[];
+var stale=[],pubProof=[],ages=[];
 LW.forEach(function(l){
 if(!byType[l.ty])byType[l.ty]={total:0,conv:0,won:0};byType[l.ty].total++;if(l.cv)byType[l.ty].conv++;if(l.wn)byType[l.ty].won++;
 if(!byCreator[l.cr])byCreator[l.cr]={total:0,conv:0};byCreator[l.cr].total++;if(l.cv)byCreator[l.cr].conv++;
@@ -573,7 +575,7 @@ if(!funnel[l.sr])funnel[l.sr]={leads:0,conv:0,won:0};funnel[l.sr].leads++;if(l.c
 if(l.em>=1){withEmail++;if(l.em===2){pubEmail++;if(l.dm){pubDom[l.dm]=(pubDom[l.dm]||0)+1;if(pubProof.length<15)pubProof.push({title:l.ti,domain:l.dm,creator:l.cr});}}else corpEmail++;}else noPerson++;
 if(l.en)enriched++;
 var age=ageOf(l.d);
-if(!l.ar&&age!=null){if(age<=7)ageBuckets['0-7d']++;else if(age<=30)ageBuckets['8-30d']++;else if(age<=90)ageBuckets['31-90d']++;else if(age<=180)ageBuckets['91-180d']++;else ageBuckets['180d+']++;}
+if(!l.ar&&age!=null){ages.push(age);if(age<=7)ageBuckets['0-7d']++;else if(age<=30)ageBuckets['8-30d']++;else if(age<=90)ageBuckets['31-90d']++;else if(age<=180)ageBuckets['91-180d']++;else ageBuckets['180d+']++;}
 if(l.ic!=null){icpScored++;icpSum+=l.ic;
 if(l.ic<=2)icpDist['0-2']++;else if(l.ic<=4)icpDist['3-4']++;else if(l.ic<=6)icpDist['5-6']++;else if(l.ic<=8)icpDist['7-8']++;else icpDist['9-10']++;
 if(l.ic>=7){hiIcp++;if(l.cv)hiIcpConv++;}else{loIcp++;if(l.cv)loIcpConv++;}
@@ -581,6 +583,9 @@ if(!l.ar&&l.ic>=7&&age!=null&&age>90)stale.push({id:l.id,title:l.ti,icp:l.ic,age
 }
 });
 stale.sort(function(a,b){return (b.icp-a.icp)||(b.ageDays-a.ageDays);});
+ages.sort(function(a,b){return a-b;});
+var ageMedian=ages.length?ages[Math.floor((ages.length-1)/2)]:null;
+var ageAvg=ages.length?Math.round(ages.reduce(function(a,b){return a+b;},0)/ages.length):null;
 var won=0,lost=0,open=0,wonValue={},ttc=[];
 DW.forEach(function(d){
 if(d.st==='won'){won++;var c=d.c||'EUR';wonValue[c]=(wonValue[c]||0)+(Number(d.v)||0);}
@@ -603,6 +608,7 @@ conversion:{converted:converted,won:won,lost:lost,open:open,totalEver:totalEver,
 icp:{scored:icpScored,unscored:LW.length-icpScored,avg:icpScored?Math.round(icpSum/icpScored*10)/10:0,distribution:Object.keys(icpDist).map(function(b){return {bucket:b,count:icpDist[b]};}),highIcp:{count:hiIcp,conv:hiIcpConv},lowIcp:{count:loIcp,conv:loIcpConv}},
 enrichment:{enriched:enriched,bare:LW.length-enriched,pct:LW.length?Math.round(enriched/LW.length*1000)/10:0},
 timeToConversion:{medianDays:median,avgDays:avg,measurable:ttc.length,samples:ttc},
+leadAge:{medianDays:ageMedian,avgDays:ageAvg,measurable:ages.length},
 funnelBySource:Object.keys(funnel).map(function(s){return {source:s,leads:funnel[s].leads,conv:funnel[s].conv,won:funnel[s].won};}).sort(function(a,b){return b.leads-a.leads;}),
 velocity:velocity,
 staleHighIcp:stale.slice(0,25),
@@ -637,14 +643,14 @@ render(V);draw(V);
 function render(V){
 var t=V.totals,C=V.conversion||{},r=[];
 var immature=(V.mode==='week'||V.mode==='month');
-var med=(V.timeToConversion&&V.timeToConversion.medianDays!=null)?V.timeToConversion.medianDays+'d':'—';
-var meas=(V.timeToConversion?V.timeToConversion.measurable:0);
+var lam=(V.leadAge&&V.leadAge.medianDays!=null)?V.leadAge.medianDays+'d':'—';
+var lameas=(V.leadAge?V.leadAge.measurable:0);
 r.push('<div class="lq-kpis">');
 [['Leads in window',fmt(t.leads),fmt(t.converted)+' converted · '+fmt(t.totalEver)+' incl. converted',''],
 ['Converted to deal',C.convertedPct+'%',fmt(C.converted)+' of '+fmt(t.totalEver),''],
 ['Win rate (converted)',C.winRateConverted+'%',fmt(C.won)+' won · '+fmt(C.lost)+' lost · '+fmt(C.open)+' open','good'],
 ['Won value',money(C.wonValue),fmt(C.won)+' won deals','good'],
-['Median days to deal',med,meas+' measurable','']
+['Median lead age',lam,fmt(lameas)+' open leads','']
 ].forEach(function(k){r.push('<div class="lq-kpi '+k[3]+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>');});
 r.push('</div>');
 if(immature)r.push('<div class="lq-note" style="margin:-6px 0 12px">Short window: this cohort is still maturing — recently-created leads haven\'t had time to convert, so converted % reads low by design.</div>');
