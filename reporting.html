@@ -421,12 +421,19 @@ function setupScrollSpy(){
 
 
 
-<!-- LEADS-INTEL-START v2 -->
+
+
+<!-- LEADS-INTEL-START v3 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
 #leads-intel .lq-card{background:#fff;border:1px solid #dde4ea;border-radius:8px;padding:16px;color:#16283c}
 #leads-intel h2{font-size:20px;margin:0 0 2px;color:inherit}
 #leads-intel .lq-sub{font-size:12px;opacity:.7;margin-bottom:14px}
+#leads-intel .lq-filter{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 14px}
+#leads-intel .lq-seg{display:inline-flex;background:#eef2f5;border:1px solid #dde4ea;border-radius:8px;padding:2px;gap:2px}
+#leads-intel .lq-seg button{appearance:none;border:0;background:transparent;color:#41525f;font:inherit;font-size:12.5px;font-weight:600;padding:5px 12px;border-radius:6px;cursor:pointer}
+#leads-intel .lq-seg button.on{background:#0e7c86;color:#fff}
+#leads-intel .lq-range{font-size:11.5px;opacity:.7}
 #leads-intel .lq-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}
 #leads-intel .lq-kpi{background:#fff;border:1px solid #dde4ea;border-top:3px solid #0e7c86;border-radius:8px;padding:10px 12px;color:#16283c}
 #leads-intel .lq-kpi.warn{border-top-color:#c77d1f}
@@ -460,135 +467,246 @@ function setupScrollSpy(){
 </style>
 <h2>Leads Intelligence</h2>
 <div class="lq-sub" id="lq-sub">Loading leads.json…</div>
+<div class="lq-filter" id="lq-filter" style="display:none">
+<span style="font-size:11px;text-transform:uppercase;letter-spacing:.06em;opacity:.6">Period</span>
+<span class="lq-seg" id="lq-seg">
+<button data-m="week">Weekly</button>
+<button data-m="month">Monthly</button>
+<button data-m="quarter">Quarterly</button>
+<button data-m="year">Yearly</button>
+<button data-m="all" class="on">All time</button>
+</span>
+<span class="lq-range" id="lq-range"></span>
+</div>
 <div id="lq-root"></div>
 <script>
 (function(){
 var LEAD='https://simplerqms.pipedrive.com/leads/inbox/';
 var DEAL='https://simplerqms.pipedrive.com/deal/';
+var M=null, MODE='all', CHARTS=[];
 function boot(){
- fetch('leads.json?t='+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json();}).then(render)
- .catch(function(){document.getElementById('lq-sub').textContent='leads.json not published yet — run the "Leads Intelligence — Feed + App Section" workflow in n8n.';});
+fetch('leads.json?t='+Date.now()).then(function(r){if(!r.ok)throw 0;return r.json();}).then(function(d){M=d;start();})
+.catch(function(){document.getElementById('lq-sub').textContent='leads.json not published yet — run the "Leads Intelligence — Feed + App Section" workflow in n8n.';});
 }
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
 function fmt(n){return Number(n||0).toLocaleString('en-US');}
 function money(obj){
- var sym={EUR:'€',USD:'$',GBP:'£'};
- var parts=Object.keys(obj||{}).map(function(c){
-  var v=obj[c],a;
-  if(v>=1e6)a=(Math.round(v/1e5)/10)+'M';else if(v>=1e3)a=Math.round(v/1e3)+'K';else a=Math.round(v);
-  return (sym[c]||(c+' '))+a;
- });
- return parts.length?parts.join(' + '):'—';
+var sym={EUR:'€',USD:'$',GBP:'£'};
+var parts=Object.keys(obj||{}).map(function(c){
+var v=obj[c],a;
+if(v>=1e6)a=(Math.round(v/1e5)/10)+'M';else if(v>=1e3)a=Math.round(v/1e3)+'K';else a=Math.round(v);
+return (sym[c]||(c+' '))+a;
+});
+return parts.length?parts.join(' + '):'—';
 }
-function render(M){
- var t=M.totals, C=M.conversion||{}, r=[];
- document.getElementById('lq-sub').textContent='Snapshot '+M.generated_at.slice(0,16).replace('T',' ')+' UTC · '+M.method_note;
- var med=(M.timeToConversion&&M.timeToConversion.medianDays!=null)?M.timeToConversion.medianDays+'d':'—';
- var meas=(M.timeToConversion?M.timeToConversion.samples.length:0);
- r.push('<div class="lq-kpis">');
- [['Total leads ever',fmt(t.totalEver),fmt(t.leads)+' inbox · '+fmt(t.converted)+' converted',''],
-  ['Converted to deal',C.convertedPct+'%',fmt(C.converted)+' of '+fmt(t.totalEver),''],
-  ['Win rate (converted)',C.winRateConverted+'%',fmt(C.won)+' won · '+fmt(C.lost)+' lost · '+fmt(C.open)+' open','good'],
-  ['Won value',money(C.wonValue),fmt(C.won)+' won deals','good'],
-  ['Median days to deal',med,meas+' measurable','']
- ].forEach(function(k){r.push('<div class="lq-kpi '+k[3]+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>');});
- r.push('</div>');
-
- r.push('<div class="lq-grid">');
- r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Leads by type</b><div class="lq-ch"><canvas id="lq-type"></canvas></div></div>');
- r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Weekly lead creation — last 12 weeks</b><div class="lq-ch"><canvas id="lq-week"></canvas></div></div>');
- r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">ICP score distribution</b><div style="font-size:11px;opacity:.65">'+fmt(M.icp.scored)+' scored · '+fmt(M.icp.unscored)+' unscored · avg '+M.icp.avg+'</div><div class="lq-ch"><canvas id="lq-icp"></canvas></div></div>');
- r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Lead → deal outcomes</b><div style="font-size:11px;opacity:.65">'+fmt(C.converted)+' converted deals from '+fmt(t.totalEver)+' leads</div><div class="lq-ch" style="height:90px"><canvas id="lq-out"></canvas></div>'+
-  '<div class="lq-outkey"><span><b style="color:#1f9d57">'+fmt(C.won)+'</b> won</span><span><b style="color:#b4462f">'+fmt(C.lost)+'</b> lost</span><span><b style="color:#0e7c86">'+fmt(C.open)+'</b> open</span></div>'+
-  '<div class="lq-note" style="margin-top:8px">Conversion is measured in aggregate from deals (source_lead_id). Once a lead converts it leaves the inbox, so per-segment splits below reflect lead <b>volume</b>, not per-segment conversion.</div>'+
-  '<table style="margin-top:8px"><tr><th>Source</th><th class="n">Leads</th><th class="n">Share</th></tr>'+
-   M.funnelBySource.slice(0,6).map(function(s){return '<tr><td>'+esc(s.source)+'</td><td class="n">'+fmt(s.leads)+'</td><td class="n">'+(t.leads?Math.round(s.leads/t.leads*1000)/10:0)+'%</td></tr>';}).join('')+'</table></div>');
- r.push('</div>');
-
- r.push('<div style="font-size:12px;opacity:.6;margin:16px 0 4px">Click any section below to expand the underlying records.</div>');
-
- var sh=M.staleHighIcp||[];
- var shBody=sh.length?('<table><tr><th>Lead</th><th class="n">ICP</th><th class="n">Age (days)</th><th>Type</th><th>Created by</th><th></th></tr>'+
-  sh.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td class="n"><span class="lq-badge hot">'+x.icp+'</span></td><td class="n">'+x.ageDays+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+LEAD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+'</table>')
-  :('<div class="lq-note">No leads currently match (ICP ≥ 7, 90+ days old, still active). Only '+fmt(M.icp.scored)+' of '+fmt(t.leads)+' leads are ICP-scored so far, and the high scorers are all recent — so this list will populate as the ICP workflow covers more leads and they age.</div>');
- r.push('<details open><summary>Reactivation candidates — '+sh.length+' leads (ICP ≥ 7, 90+ days old, still active)</summary><div class="lq-body">'+shBody+'</div></details>');
-
- var cp=M.convertedProof||[];
- r.push('<details><summary>Converted leads → deals — '+fmt(C.converted)+' total, showing '+cp.length+' most recent</summary><div class="lq-body"><table><tr><th>Deal</th><th>Status</th><th class="n">Value</th><th class="n">Created</th><th></th></tr>'+
-  cp.map(function(x){var cls=x.status==='won'?'won':(x.status==='lost'?'lost':'');var val=x.value?((x.currency?({EUR:'€',USD:'$',GBP:'£'}[x.currency]||x.currency+' '):'')+fmt(x.value)):'—';return '<tr><td>'+esc(x.title)+'</td><td><span class="lq-badge '+cls+'">'+esc(x.status)+'</span></td><td class="n">'+val+'</td><td class="n">'+esc(x.add)+'</td><td><a href="'+DEAL+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+
-  '</table><div class="lq-note">These are Pipedrive deals carrying a source_lead_id (i.e. created from a lead). Value shown for won/open deals; '+(M.timeToConversion?M.timeToConversion.dealPredatesLead:0)+' converted deals predate their lead and are excluded from days-to-deal.</div></div></details>');
-
- var bc=M.byCreator||[];
- var isKey=function(n){return /manuel|manny|regine/i.test(n);};
- var bcTop=bc.slice(0,15);
- r.push('<details open><summary>Leads by creator \u2014 who is generating leads</summary><div class="lq-body"><table><tr><th>Creator</th><th class="n">Leads</th><th class="n">Linked to a deal</th></tr>'+
-  bcTop.map(function(x){var h=isKey(x.name);return '<tr'+(h?' style="background:#fbf1e2"':'')+'><td>'+(h?'<b>':'')+esc(x.name)+(h?'</b>':'')+'</td><td class="n">'+fmt(x.total)+'</td><td class="n">'+fmt(x.conv)+'</td></tr>';}).join('')+
-  '</table><div class="lq-note">Highlighted rows = Manuel / Regine. \u201cLinked to a deal\u201d counts inbox leads whose contact also sits on a deal; an exact per-creator conversion rate needs lead-history tracking (converted leads leave the inbox), which is off for now.</div></div></details>');
-
- var A=M.archived||{total:0,connected:false,reason:{have:0,dist:[]},reasonDesc:{have:0,dist:[]},country:{have:0,missing:0,dist:[]}};
- var barRow=function(label,count,denom,color){var pct=denom?Math.round(count/denom*1000)/10:0;return '<tr><td>'+esc(label)+'</td><td class="n">'+fmt(count)+'</td><td class="n">'+pct+'%</td><td style="width:120px"><div style="background:#eef2f5;border-radius:4px;height:8px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+(color||'#0e7c86')+'"></div></div></td></tr>';};
- r.push('<div class="lq-grid" style="margin-top:12px">');
- r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Archived leads by lost-reason</b>'+
-  '<div style="font-size:11px;opacity:.65;margin:2px 0 8px">'+fmt((A.reason&&A.reason.have)||0)+' of '+fmt(A.total)+' archived leads carry a reason; shares are of those '+fmt((A.reason&&A.reason.have)||0)+'.</div>'+
-  (A.connected?(
-    '<div style="max-height:360px;overflow:auto">'+
-    '<table><tr><th>Lost reason</th><th class="n">Leads</th><th class="n">Share</th><th></th></tr>'+
-    A.reason.dist.map(function(x){return barRow(x.label,x.count,A.reason.have,'#b4462f');}).join('')+'</table>'+
-    ((A.reasonDesc&&A.reasonDesc.dist.length)?(
-      '<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;margin:16px 0 4px">Reason description \u2014 free-text, '+fmt(A.reasonDesc.have)+' filled (top '+A.reasonDesc.dist.length+')</div>'+
-      '<table><tr><th>Description</th><th class="n">Leads</th></tr>'+
-      A.reasonDesc.dist.map(function(x){return '<tr><td>'+esc(x.text)+'</td><td class="n">'+fmt(x.count)+'</td></tr>';}).join('')+'</table>'
-    ):'')+
-    '</div>'
-  ):'<div class="lq-note" style="margin-top:0">Archived feed not connected.</div>')+
-  '</div>');
- r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Archived leads by country of origin</b>'+
-  '<div style="font-size:11px;opacity:.65;margin:2px 0 8px">'+fmt((A.country&&A.country.have)||0)+' of '+fmt(A.total)+' have a country ('+fmt((A.country&&A.country.missing)||0)+' blank); shares are of those '+fmt((A.country&&A.country.have)||0)+'.</div>'+
-  (A.connected?(
-    '<div style="max-height:360px;overflow:auto">'+
-    '<table><tr><th>Country</th><th class="n">Leads</th><th class="n">Share</th><th></th></tr>'+
-    A.country.dist.map(function(x){return barRow(x.country,x.count,A.country.have,'#0e7c86');}).join('')+'</table>'+
-    '</div>'
-  ):'')+
-  '</div>');
- r.push('</div>');
-
- 
-var abn=M.activityButNew||[];
- r.push('<details><summary>Has activity but still New \u2014 '+abn.length+' leads (Stage = Lead, Status = New)</summary><div class="lq-body">'+
-  (abn.length?('<table><tr><th>Lead</th><th>Created by</th><th></th></tr>'+abn.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+LEAD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open \u2197</a></td></tr>';}).join('')+'</table>'):'<div class="lq-note">No leads are stuck at Stage = Lead / Status = New with a scheduled activity right now.</div>')+
-  '<div class="lq-note">These have an upcoming activity scheduled but were never moved out of New/Lead \u2014 a pipeline-hygiene gap. Broadens to include completed-only activities once the activities feed is connected (item 9).</div></div></details>');
-
- var ov=M.overdueActivity||[];
- r.push('<details><summary>Overdue activities \u2014 '+ov.length+' leads with a past-due open task</summary><div class="lq-body">'+
-  (ov.length?('<table><tr><th>Lead</th><th>Oldest due</th><th class="n">Overdue</th><th>Task</th><th>Created by</th><th></th></tr>'+ov.map(function(x){return '<tr><td>'+esc(x.title)+(x.archived?' <span class="lq-badge" style="background:#eee;color:#666">archived</span>':'')+'</td><td>'+esc(x.due)+'</td><td class="n">'+x.count+'</td><td>'+esc(x.subject)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+LEAD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open \u2197</a></td></tr>';}).join('')+'</table><div class="lq-note">Counts tasks linked directly to a lead. Most overdue tasks in Pipedrive sit on <b>deals</b>, not leads \u2014 those live in the deal pipeline, not here.</div>'):('<div class="lq-note">'+(M.activitiesConnected?'No leads have a past-due open task right now.':'Activities feed not connected yet \u2014 attach the Pipedrive credential to the \u201cFetch Activities\u201d node in n8n and re-run to populate this.')+'</div>'))
-  +'</div></details>');
-
- var dg=M.dupOrgs||[];
- r.push('<details><summary>Duplicate organisations — '+dg.length+' groups</summary><div class="lq-body"><table><tr><th>Group</th><th class="n">Leads</th><th>Sample titles</th></tr>'+
-  dg.map(function(g){return '<tr><td>'+esc(g.key)+' <span style="opacity:.5;font-size:10px">('+g.kind+')</span></td><td class="n">'+g.count+'</td><td>'+g.titles.map(esc).join(' · ')+'</td></tr>';}).join('')+'</table></div></details>');
-
- var pe=M.publicEmailProof||[];
- r.push('<details><summary>Public-domain emails — '+fmt(t.publicEmail)+' total, showing '+pe.length+'</summary><div class="lq-body"><table><tr><th>Lead</th><th>Domain</th><th>Created by</th></tr>'+
-  pe.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.domain)+'</td><td>'+esc(x.creator)+'</td></tr>';}).join('')+'</table></div></details>');
-
- document.getElementById('lq-root').innerHTML=r.join('');
- draw(M);
+function parts(ds){var p=String(ds).split('-');return {y:+p[0],m:+p[1],d:+p[2]};}
+function pad(n){return String(n).padStart(2,'0');}
+function isoWeekKey(dt){var d=new Date(Date.UTC(dt.getUTCFullYear(),dt.getUTCMonth(),dt.getUTCDate()));var day=d.getUTCDay()||7;d.setUTCDate(d.getUTCDate()+4-day);var y=d.getUTCFullYear();var start=new Date(Date.UTC(y,0,1));var w=Math.ceil((((d-start)/86400000)+1)/7);return y+'-W'+pad(w);}
+function pk(ds,mode){
+if(mode==='all') return 'ALL';
+if(!ds) return null;
+var P=parts(ds);
+if(mode==='year') return String(P.y);
+if(mode==='month') return P.y+'-'+pad(P.m);
+if(mode==='quarter') return P.y+'-Q'+(Math.floor((P.m-1)/3)+1);
+if(mode==='week') return isoWeekKey(new Date(Date.UTC(P.y,P.m-1,P.d)));
+return 'ALL';
 }
-function draw(M){
- var g={color:'#e7edf2'};
- function isoWk(s){var p=String(s).split('-W');var y=+p[0],w=+p[1]||1;var d=new Date(Date.UTC(y,0,1+(w-1)*7));var dow=d.getUTCDay();if(dow<=4)d.setUTCDate(d.getUTCDate()-dow+1);else d.setUTCDate(d.getUTCDate()+8-dow);return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});}
- new Chart(document.getElementById('lq-type'),{type:'bar',data:{labels:M.byType.map(function(x){return x.type;}),datasets:[{label:'Leads',data:M.byType.map(function(x){return x.total;}),backgroundColor:'#0e7c86',borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{beginAtZero:true,grid:g,ticks:{stepSize:100}},x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}}},plugins:{legend:{display:false}}}});
- new Chart(document.getElementById('lq-week'),{type:'line',data:{labels:M.weekly.map(function(x){return isoWk(x.week);}),datasets:[{label:'Leads',data:M.weekly.map(function(x){return x.total;}),borderColor:'#0e7c86',backgroundColor:'rgba(14,124,134,.12)',fill:true,tension:.3,pointRadius:2}]},options:{maintainAspectRatio:false,scales:{y:{grid:g,beginAtZero:true},x:{grid:{display:false},ticks:{font:{size:10}}}},plugins:{legend:{display:false}}}});
- new Chart(document.getElementById('lq-icp'),{type:'bar',data:{labels:M.icp.distribution.map(function(x){return x.bucket;}),datasets:[{data:M.icp.distribution.map(function(x){return x.count;}),backgroundColor:M.icp.distribution.map(function(x){return x.bucket==='7-8'||x.bucket==='9-10'?'#c77d1f':'#0e7c86';}),borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{grid:g},x:{grid:{display:false}}},plugins:{legend:{display:false}}}});
- var C=M.conversion||{};
- new Chart(document.getElementById('lq-out'),{type:'bar',data:{labels:['Converted'],datasets:[{label:'Won',data:[C.won],backgroundColor:'#1f9d57'},{label:'Lost',data:[C.lost],backgroundColor:'#b4462f'},{label:'Open',data:[C.open],backgroundColor:'#0e7c86'}]},options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:{stacked:true,grid:g},y:{stacked:true,grid:{display:false}}},plugins:{legend:{labels:{boxWidth:9,font:{size:10}}}}}});
+function todayStr(){var n=new Date();return n.getFullYear()+'-'+pad(n.getMonth()+1)+'-'+pad(n.getDate());}
+function curKey(mode){return pk(todayStr(),mode);}
+function ageOf(ds){if(!ds)return null;var P=parts(ds);var t=Date.UTC(P.y,P.m-1,P.d);return Math.floor((Date.now()-t)/86400000);}
+function fmtDate(ymd){var P=parts(ymd);var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return mn[P.m-1]+' '+P.d;}
+function rangeLabel(mode){
+var n=new Date();var y=n.getFullYear();
+if(mode==='all') return 'all leads, all time';
+if(mode==='year') return 'Jan 1 – Dec 31, '+y;
+if(mode==='month'){var last=new Date(y,n.getMonth()+1,0).getDate();return fmtDate(y+'-'+pad(n.getMonth()+1)+'-01')+' – '+fmtDate(y+'-'+pad(n.getMonth()+1)+'-'+pad(last))+', '+y;}
+if(mode==='quarter'){var q=Math.floor(n.getMonth()/3);var sm=q*3,em=q*3+2;var last2=new Date(y,em+1,0).getDate();return 'Q'+(q+1)+' · '+fmtDate(y+'-'+pad(sm+1)+'-01')+' – '+fmtDate(y+'-'+pad(em+1)+'-'+pad(last2))+', '+y;}
+if(mode==='week'){var day=n.getUTCDay()||7;var mon=new Date(Date.UTC(y,n.getMonth(),n.getDate()));mon.setUTCDate(mon.getUTCDate()-day+1);var sun=new Date(mon);sun.setUTCDate(sun.getUTCDate()+6);var f=function(d){var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];return mn[d.getUTCMonth()]+' '+d.getUTCDate();};return f(mon)+' – '+f(sun)+', '+sun.getUTCFullYear();}
+return '';
+}
+function velocityAxis(mode){
+var n=new Date();var y=n.getFullYear();var out=[];var i;
+var mn=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+if(mode==='week'){
+var day=n.getUTCDay()||7;var mon=new Date(Date.UTC(y,n.getMonth(),n.getDate()));mon.setUTCDate(mon.getUTCDate()-day+1);
+var wd=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+for(i=0;i<7;i++){var dd=new Date(mon);dd.setUTCDate(dd.getUTCDate()+i);out.push({key:dd.getUTCFullYear()+'-'+pad(dd.getUTCMonth()+1)+'-'+pad(dd.getUTCDate()),label:wd[i]});}
+return {axis:out,keyer:function(ds){return ds;}};
+}
+if(mode==='month'){
+var lm=new Date(y,n.getMonth()+1,0).getDate();
+for(i=1;i<=lm;i++){var k=y+'-'+pad(n.getMonth()+1)+'-'+pad(i);out.push({key:k,label:String(i)});}
+return {axis:out,keyer:function(ds){return ds;}};
+}
+if(mode==='quarter'){
+var q=Math.floor(n.getMonth()/3);var cur=new Date(Date.UTC(y,q*3,1));var end=new Date(Date.UTC(y,q*3+3,0));
+var seen={};
+while(cur<=end){var wk=isoWeekKey(cur);if(!seen[wk]){seen[wk]=1;out.push({key:wk,label:mn[cur.getUTCMonth()]+' '+cur.getUTCDate()});}cur.setUTCDate(cur.getUTCDate()+7);}
+return {axis:out,keyer:function(ds){var P=parts(ds);return isoWeekKey(new Date(Date.UTC(P.y,P.m-1,P.d)));}};
+}
+if(mode==='year'){
+for(i=0;i<12;i++){out.push({key:y+'-'+pad(i+1),label:mn[i]});}
+return {axis:out,keyer:function(ds){var P=parts(ds);return P.y+'-'+pad(P.m);}};
+}
+var months={};(M.records.leads||[]).forEach(function(l){if(l.d){var P=parts(l.d);months[P.y+'-'+pad(P.m)]=1;}});
+var keys=Object.keys(months).sort().slice(-18);
+keys.forEach(function(k){var P=k.split('-');out.push({key:k,label:mn[(+P[1])-1]+' '+String(P[0]).slice(2)});});
+return {axis:out,keyer:function(ds){var P=parts(ds);return P.y+'-'+pad(P.m);}};
+}
+function aggregate(mode){
+var R=M.records||{leads:[],deals:[]};
+var ck=curKey(mode);
+var LW=R.leads.filter(function(l){return mode==='all'?true:(l.d&&pk(l.d,mode)===ck);});
+var DW=R.deals.filter(function(d){var b=d.ld||d.d;return mode==='all'?true:(b&&pk(b,mode)===ck);});
+var byType={},byCreator={},byOwner={},funnel={},icpDist={'0-2':0,'3-4':0,'5-6':0,'7-8':0,'9-10':0},pubDom={};
+var ageBuckets={'0-7d':0,'8-30d':0,'31-90d':0,'91-180d':0,'180d+':0};
+var withEmail=0,pubEmail=0,corpEmail=0,noPerson=0,enriched=0,icpScored=0,icpSum=0,hiIcp=0,hiIcpConv=0,loIcp=0,loIcpConv=0;
+var stale=[],pubProof=[];
+LW.forEach(function(l){
+if(!byType[l.ty])byType[l.ty]={total:0,conv:0,won:0};byType[l.ty].total++;if(l.cv)byType[l.ty].conv++;if(l.wn)byType[l.ty].won++;
+if(!byCreator[l.cr])byCreator[l.cr]={total:0,conv:0};byCreator[l.cr].total++;if(l.cv)byCreator[l.cr].conv++;
+byOwner[l.ow]=(byOwner[l.ow]||0)+1;
+if(!funnel[l.sr])funnel[l.sr]={leads:0,conv:0,won:0};funnel[l.sr].leads++;if(l.cv)funnel[l.sr].conv++;if(l.wn)funnel[l.sr].won++;
+if(l.em>=1){withEmail++;if(l.em===2){pubEmail++;if(l.dm){pubDom[l.dm]=(pubDom[l.dm]||0)+1;if(pubProof.length<15)pubProof.push({title:l.ti,domain:l.dm,creator:l.cr});}}else corpEmail++;}else noPerson++;
+if(l.en)enriched++;
+var age=ageOf(l.d);
+if(!l.ar&&age!=null){if(age<=7)ageBuckets['0-7d']++;else if(age<=30)ageBuckets['8-30d']++;else if(age<=90)ageBuckets['31-90d']++;else if(age<=180)ageBuckets['91-180d']++;else ageBuckets['180d+']++;}
+if(l.ic!=null){icpScored++;icpSum+=l.ic;
+if(l.ic<=2)icpDist['0-2']++;else if(l.ic<=4)icpDist['3-4']++;else if(l.ic<=6)icpDist['5-6']++;else if(l.ic<=8)icpDist['7-8']++;else icpDist['9-10']++;
+if(l.ic>=7){hiIcp++;if(l.cv)hiIcpConv++;}else{loIcp++;if(l.cv)loIcpConv++;}
+if(!l.ar&&l.ic>=7&&age!=null&&age>90)stale.push({id:l.id,title:l.ti,icp:l.ic,ageDays:age,creator:l.cr,type:l.ty});
+}
+});
+stale.sort(function(a,b){return (b.icp-a.icp)||(b.ageDays-a.ageDays);});
+var won=0,lost=0,open=0,wonValue={},ttc=[];
+DW.forEach(function(d){
+if(d.st==='won'){won++;var c=d.c||'EUR';wonValue[c]=(wonValue[c]||0)+(Number(d.v)||0);}
+else if(d.st==='lost')lost++;else open++;
+if(d.ld&&d.d){var P1=parts(d.ld),P2=parts(d.d);var dd=Math.round((Date.UTC(P2.y,P2.m-1,P2.d)-Date.UTC(P1.y,P1.m-1,P1.d))/86400000);if(dd>=0)ttc.push(dd);}
+});
+ttc.sort(function(a,b){return a-b;});
+var median=ttc.length?ttc[Math.floor((ttc.length-1)/2)]:null;
+var avg=ttc.length?Math.round(ttc.reduce(function(a,b){return a+b;},0)/ttc.length):null;
+var converted=DW.length,inbox=LW.length,totalEver=inbox+converted;
+var convProof=DW.slice().sort(function(a,b){return String(b.d||'').localeCompare(String(a.d||''));}).slice(0,60).map(function(d){return {id:d.id,title:d.ti,status:d.st,value:d.v,currency:d.c,add:d.d};});
+var va=velocityAxis(mode);var buck={};va.axis.forEach(function(a){buck[a.key]=0;});
+LW.forEach(function(l){if(l.d){var k=va.keyer(l.d);if(buck[k]!=null)buck[k]++;}});
+var velocity={labels:va.axis.map(function(a){return a.label;}),data:va.axis.map(function(a){return buck[a.key];})};
+var sortObj=function(o,fn){return Object.keys(o).map(function(k){return fn(k,o[k]);}).sort(function(a,b){return b.total-a.total;});};
+return {
+mode:mode,
+totals:{leads:inbox,totalEver:totalEver,active:LW.filter(function(l){return !l.ar;}).length,archived:LW.filter(function(l){return l.ar;}).length,converted:converted,convertedPct:totalEver?Math.round(converted/totalEver*1000)/10:0,won:won,winRateConverted:converted?Math.round(won/converted*1000)/10:0,withEmail:withEmail,publicEmail:pubEmail,publicEmailPct:withEmail?Math.round(pubEmail/withEmail*1000)/10:0,corporateEmail:corpEmail,noEmailOrPerson:noPerson},
+conversion:{converted:converted,won:won,lost:lost,open:open,totalEver:totalEver,inbox:inbox,convertedPct:totalEver?Math.round(converted/totalEver*1000)/10:0,winRateConverted:converted?Math.round(won/converted*1000)/10:0,wonValue:wonValue},
+icp:{scored:icpScored,unscored:LW.length-icpScored,avg:icpScored?Math.round(icpSum/icpScored*10)/10:0,distribution:Object.keys(icpDist).map(function(b){return {bucket:b,count:icpDist[b]};}),highIcp:{count:hiIcp,conv:hiIcpConv},lowIcp:{count:loIcp,conv:loIcpConv}},
+enrichment:{enriched:enriched,bare:LW.length-enriched,pct:LW.length?Math.round(enriched/LW.length*1000)/10:0},
+timeToConversion:{medianDays:median,avgDays:avg,measurable:ttc.length,samples:ttc},
+funnelBySource:Object.keys(funnel).map(function(s){return {source:s,leads:funnel[s].leads,conv:funnel[s].conv,won:funnel[s].won};}).sort(function(a,b){return b.leads-a.leads;}),
+velocity:velocity,
+staleHighIcp:stale.slice(0,25),
+convertedProof:convProof,
+byType:sortObj(byType,function(k,v){return {type:k,total:v.total,conv:v.conv,won:v.won};}),
+byCreator:sortObj(byCreator,function(k,v){return {name:k,total:v.total,conv:v.conv};}),
+byOwner:Object.keys(byOwner).map(function(k){return {name:k,total:byOwner[k]};}).sort(function(a,b){return b.total-a.total;}),
+publicDomains:Object.keys(pubDom).map(function(k){return {domain:k,count:pubDom[k]};}).sort(function(a,b){return b.count-a.count;}).slice(0,15),
+publicEmailProof:pubProof,
+ageBuckets:Object.keys(ageBuckets).map(function(k){return {bucket:k,count:ageBuckets[k]};})
+};
+}
+function start(){
+if(!M.records||!M.records.leads){
+document.getElementById('lq-sub').textContent='Snapshot '+(M.generated_at||'').slice(0,16).replace('T',' ')+' UTC · date filter needs the updated feed (re-run the workflow).';
+render(M);draw(M);return;
+}
+document.getElementById('lq-filter').style.display='flex';
+var seg=document.getElementById('lq-seg');
+seg.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;MODE=b.getAttribute('data-m');
+Array.prototype.forEach.call(seg.querySelectorAll('button'),function(x){x.classList.toggle('on',x===b);});
+update();});
+update();
+}
+function update(){
+var V=aggregate(MODE);
+document.getElementById('lq-range').textContent='· '+rangeLabel(MODE);
+document.getElementById('lq-sub').textContent='Snapshot '+(M.generated_at||'').slice(0,16).replace('T',' ')+' UTC · '+fmt(V.totals.leads)+' leads in window · converted-cohort view';
+CHARTS.forEach(function(c){try{c.destroy();}catch(e){}});CHARTS=[];
+render(V);draw(V);
+}
+function render(V){
+var t=V.totals,C=V.conversion||{},r=[];
+var immature=(V.mode==='week'||V.mode==='month');
+var med=(V.timeToConversion&&V.timeToConversion.medianDays!=null)?V.timeToConversion.medianDays+'d':'—';
+var meas=(V.timeToConversion?V.timeToConversion.measurable:0);
+r.push('<div class="lq-kpis">');
+[['Leads in window',fmt(t.leads),fmt(t.converted)+' converted · '+fmt(t.totalEver)+' incl. converted',''],
+['Converted to deal',C.convertedPct+'%',fmt(C.converted)+' of '+fmt(t.totalEver),''],
+['Win rate (converted)',C.winRateConverted+'%',fmt(C.won)+' won · '+fmt(C.lost)+' lost · '+fmt(C.open)+' open','good'],
+['Won value',money(C.wonValue),fmt(C.won)+' won deals','good'],
+['Median days to deal',med,meas+' measurable','']
+].forEach(function(k){r.push('<div class="lq-kpi '+k[3]+'"><div class="l">'+k[0]+'</div><div class="v">'+k[1]+'</div><div class="s">'+k[2]+'</div></div>');});
+r.push('</div>');
+if(immature)r.push('<div class="lq-note" style="margin:-6px 0 12px">Short window: this cohort is still maturing — recently-created leads haven\'t had time to convert, so converted % reads low by design.</div>');
+
+r.push('<div class="lq-grid">');
+r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Leads by type</b><div class="lq-ch"><canvas id="lq-type"></canvas></div></div>');
+var vlabel={week:'daily · this week',month:'daily · this month',quarter:'weekly · this quarter',year:'monthly · this year',all:'monthly'}[V.mode];
+r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Lead creation — '+vlabel+'</b><div class="lq-ch"><canvas id="lq-week"></canvas></div></div>');
+r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">ICP score distribution</b><div style="font-size:11px;opacity:.65">'+fmt(V.icp.scored)+' scored · '+fmt(V.icp.unscored)+' unscored · avg '+V.icp.avg+'</div><div class="lq-ch"><canvas id="lq-icp"></canvas></div></div>');
+r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Lead → deal outcomes</b><div style="font-size:11px;opacity:.65">'+fmt(C.converted)+' converted deals from '+fmt(t.totalEver)+' leads</div><div class="lq-ch" style="height:90px"><canvas id="lq-out"></canvas></div>'+
+'<div class="lq-outkey"><span><b style="color:#1f9d57">'+fmt(C.won)+'</b> won</span><span><b style="color:#b4462f">'+fmt(C.lost)+'</b> lost</span><span><b style="color:#0e7c86">'+fmt(C.open)+'</b> open</span></div>'+
+'<table style="margin-top:8px"><tr><th>Source</th><th class="n">Leads</th><th class="n">Share</th></tr>'+
+V.funnelBySource.slice(0,6).map(function(s){return '<tr><td>'+esc(s.source)+'</td><td class="n">'+fmt(s.leads)+'</td><td class="n">'+(t.leads?Math.round(s.leads/t.leads*1000)/10:0)+'%</td></tr>';}).join('')+'</table></div>');
+r.push('</div>');
+
+r.push('<div style="font-size:12px;opacity:.6;margin:16px 0 4px">Click any section below to expand the underlying records. Everything above and below reflects the selected period.</div>');
+
+var sh=V.staleHighIcp||[];
+var shBody=sh.length?('<table><tr><th>Lead</th><th class="n">ICP</th><th class="n">Age (days)</th><th>Type</th><th>Created by</th><th></th></tr>'+
+sh.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td class="n"><span class="lq-badge hot">'+x.icp+'</span></td><td class="n">'+x.ageDays+'</td><td>'+esc(x.type)+'</td><td>'+esc(x.creator)+'</td><td><a href="'+LEAD+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+'</table>')
+:('<div class="lq-note">No leads in this window match (ICP ≥ 7, 90+ days old, still active).</div>');
+r.push('<details open><summary>Reactivation candidates — '+sh.length+' leads (ICP ≥ 7, 90+ days old, still active)</summary><div class="lq-body">'+shBody+'</div></details>');
+
+var cp=V.convertedProof||[];
+r.push('<details><summary>Converted leads → deals — '+fmt(C.converted)+' total, showing '+cp.length+' most recent</summary><div class="lq-body"><table><tr><th>Deal</th><th>Status</th><th class="n">Value</th><th class="n">Created</th><th></th></tr>'+
+cp.map(function(x){var cls=x.status==='won'?'won':(x.status==='lost'?'lost':'');var val=x.value?((x.currency?({EUR:'€',USD:'$',GBP:'£'}[x.currency]||x.currency+' '):'')+fmt(x.value)):'—';return '<tr><td>'+esc(x.title)+'</td><td><span class="lq-badge '+cls+'">'+esc(x.status)+'</span></td><td class="n">'+val+'</td><td class="n">'+esc(x.add)+'</td><td><a href="'+DEAL+encodeURIComponent(x.id)+'" target="_blank" rel="noopener">open ↗</a></td></tr>';}).join('')+
+'</table><div class="lq-note">Deals carrying a source_lead_id (created from a lead), whose source lead was created in the selected window.</div></div></details>');
+
+var bc=V.byCreator||[];var isKey=function(n){return /manuel|manny|regine/i.test(n);};
+r.push('<details open><summary>Leads by creator — who is generating leads</summary><div class="lq-body"><table><tr><th>Creator</th><th class="n">Leads</th><th class="n">Linked to a deal</th></tr>'+
+bc.slice(0,15).map(function(x){var h=isKey(x.name);return '<tr'+(h?' style="background:#fbf1e2"':'')+'><td>'+(h?'<b>':'')+esc(x.name)+(h?'</b>':'')+'</td><td class="n">'+fmt(x.total)+'</td><td class="n">'+fmt(x.conv)+'</td></tr>';}).join('')+
+'</table><div class="lq-note">Highlighted = Manuel / Regine. "Linked to a deal" = leads whose contact also sits on a deal.</div></div></details>');
+
+var pe=V.publicEmailProof||[];
+r.push('<details><summary>Public-domain emails — '+fmt(t.publicEmail)+' in window, showing '+pe.length+'</summary><div class="lq-body"><table><tr><th>Lead</th><th>Domain</th><th>Created by</th></tr>'+
+pe.map(function(x){return '<tr><td>'+esc(x.title)+'</td><td>'+esc(x.domain)+'</td><td>'+esc(x.creator)+'</td></tr>';}).join('')+'</table></div></details>');
+
+var A=M.archived||{total:0,connected:false,reason:{have:0,dist:[]},reasonDesc:{have:0,dist:[]},country:{have:0,missing:0,dist:[]}};
+var barRow=function(label,count,denom,color){var pct=denom?Math.round(count/denom*1000)/10:0;return '<tr><td>'+esc(label)+'</td><td class="n">'+fmt(count)+'</td><td class="n">'+pct+'%</td><td style="width:120px"><div style="background:#eef2f5;border-radius:4px;height:8px;overflow:hidden"><div style="width:'+pct+'%;height:100%;background:'+(color||'#0e7c86')+'"></div></div></td></tr>';};
+r.push('<div style="font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.55;margin:22px 0 2px">Archived-lead analysis · all-time (not filtered by period)</div>');
+r.push('<div class="lq-grid">');
+r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Archived leads by lost-reason</b>'+
+'<div style="font-size:11px;opacity:.65;margin:2px 0 8px">'+fmt((A.reason&&A.reason.have)||0)+' of '+fmt(A.total)+' archived leads carry a reason.</div>'+
+(A.connected?('<div style="max-height:360px;overflow:auto"><table><tr><th>Lost reason</th><th class="n">Leads</th><th class="n">Share</th><th></th></tr>'+A.reason.dist.map(function(x){return barRow(x.label,x.count,A.reason.have,'#b4462f');}).join('')+'</table></div>'):'<div class="lq-note" style="margin-top:0">Archived feed not connected.</div>')+'</div>');
+r.push('<div class="lq-card lq-c6"><b style="font-size:13.5px">Archived leads by country of origin</b>'+
+'<div style="font-size:11px;opacity:.65;margin:2px 0 8px">'+fmt((A.country&&A.country.have)||0)+' of '+fmt(A.total)+' have a country.</div>'+
+(A.connected?('<div style="max-height:360px;overflow:auto"><table><tr><th>Country</th><th class="n">Leads</th><th class="n">Share</th><th></th></tr>'+A.country.dist.map(function(x){return barRow(x.country,x.count,A.country.have,'#0e7c86');}).join('')+'</table></div>'):'')+'</div>');
+r.push('</div>');
+
+document.getElementById('lq-root').innerHTML=r.join('');
+}
+function draw(V){
+var g={color:'#e7edf2'};
+CHARTS.push(new Chart(document.getElementById('lq-type'),{type:'bar',data:{labels:V.byType.map(function(x){return x.type;}),datasets:[{label:'Leads',data:V.byType.map(function(x){return x.total;}),backgroundColor:'#0e7c86',borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{beginAtZero:true,grid:g},x:{grid:{display:false},ticks:{maxRotation:45,font:{size:10}}}},plugins:{legend:{display:false}}}}));
+CHARTS.push(new Chart(document.getElementById('lq-week'),{type:'line',data:{labels:V.velocity.labels,datasets:[{label:'Leads',data:V.velocity.data,borderColor:'#0e7c86',backgroundColor:'rgba(14,124,134,.12)',fill:true,tension:.3,pointRadius:2}]},options:{maintainAspectRatio:false,scales:{y:{grid:g,beginAtZero:true},x:{grid:{display:false},ticks:{font:{size:10},maxRotation:0,autoSkip:true,maxTicksLimit:12}}},plugins:{legend:{display:false}}}}));
+CHARTS.push(new Chart(document.getElementById('lq-icp'),{type:'bar',data:{labels:V.icp.distribution.map(function(x){return x.bucket;}),datasets:[{data:V.icp.distribution.map(function(x){return x.count;}),backgroundColor:V.icp.distribution.map(function(x){return x.bucket==='7-8'||x.bucket==='9-10'?'#c77d1f':'#0e7c86';}),borderRadius:3}]},options:{maintainAspectRatio:false,scales:{y:{grid:g},x:{grid:{display:false}}},plugins:{legend:{display:false}}}}));
+var C=V.conversion||{};
+CHARTS.push(new Chart(document.getElementById('lq-out'),{type:'bar',data:{labels:['Converted'],datasets:[{label:'Won',data:[C.won],backgroundColor:'#1f9d57'},{label:'Lost',data:[C.lost],backgroundColor:'#b4462f'},{label:'Open',data:[C.open],backgroundColor:'#0e7c86'}]},options:{indexAxis:'y',maintainAspectRatio:false,scales:{x:{stacked:true,grid:g},y:{stacked:true,grid:{display:false}}},plugins:{legend:{labels:{boxWidth:9,font:{size:10}}}}}}));
 }
 if(window.Chart){boot();}else{var s=document.createElement('script');s.src='https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js';s.onload=boot;document.head.appendChild(s);}
 })();
 </script>
 </section>
-<!-- LEADS-INTEL-END v2 -->
+<!-- LEADS-INTEL-END v3 -->
 
 </body>
 </html>
