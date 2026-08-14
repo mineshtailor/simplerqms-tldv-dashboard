@@ -484,6 +484,7 @@ function setupScrollSpy(){
 
 
 
+
 <!-- LEADS-INTEL-START v3 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
@@ -885,6 +886,9 @@ if(window.Chart){boot();}else{var s=document.createElement('script');s.src='http
 
 
 
+
+
+
 <!-- LQ-TT-START -->
 <div class="lq-card" id="lq-tt" style="margin-top:12px">
 <div style="font-size:15px;font-weight:800;margin-bottom:2px">Leads by type &mdash; monthly, this year vs last</div>
@@ -973,37 +977,37 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal.style
 </script>
 <!-- LQ-TT-END -->
 
-<!-- LQ-SRC-START -->
-<div class="lq-card" id="lq-src" style="margin-top:12px">
-<div style="font-size:15px;font-weight:800;margin-bottom:2px">Lead sources &mdash; by acquisition channel</div>
-<div class="lq-sub" id="lq-src-sub" style="margin-bottom:12px">Loading&hellip;</div>
-<div id="lq-src-wrap" style="overflow:auto"></div>
-<div class="lq-note" id="lq-src-note" style="margin-top:8px"></div>
+<!-- LQ-FUNNEL-START -->
+<style>
+#lqfn .fc{border:1px solid #e5ebf0;border-radius:10px;padding:14px 15px;margin-top:12px}
+#lqfn .fch{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+#lqfn .fct{font-size:13.5px;font-weight:800;color:#16283c}
+#lqfn .fcb{font-size:10px;font-weight:700;color:#8894a0;border:1px solid #dde4ea;border-radius:20px;padding:1px 8px;white-space:nowrap}
+#lqfn .fcs{font-size:11px;color:#8894a0;margin:2px 0 10px}
+#lqfn .gap{border:1px dashed #cdd6de;border-radius:8px;padding:9px 11px;margin-top:8px;font-size:11px;color:#8894a0;background:#fafbfc}
+#lqfn .br{display:flex;align-items:center;gap:10px;margin:5px 0}
+#lqfn .brl{width:130px;font-size:12px;color:#16283c;font-weight:600;text-align:right;flex:none}
+#lqfn .brt{flex:1;background:#f0f4f6;border-radius:5px;height:22px;overflow:hidden}
+#lqfn .brf{height:100%;border-radius:5px}
+#lqfn .brv{width:60px;font-size:12px;font-variant-numeric:tabular-nums;color:#16283c;font-weight:700;flex:none}
+#lqfn table{width:100%;border-collapse:collapse;font-size:12px}
+#lqfn th{text-align:right;font-size:9.5px;text-transform:uppercase;letter-spacing:.05em;color:#8894a0;padding:5px 10px 5px 0;border-bottom:1.5px solid #dde4ea;white-space:nowrap}
+#lqfn th:first-child,#lqfn td:first-child{text-align:left;font-weight:600}
+#lqfn td{padding:5px 10px 5px 0;border-bottom:1px solid #eef2f5;white-space:nowrap;color:#16283c;text-align:right;font-variant-numeric:tabular-nums}
+#lqfn .tg{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px}
+#lqfn .tl{border:1px solid #eef2f5;border-radius:8px;padding:9px 11px}
+#lqfn .tlv{font-size:19px;font-weight:800;color:#16283c;font-variant-numeric:tabular-nums}
+#lqfn .tll{font-size:10.5px;color:#8894a0;margin-top:1px}
+#lqfn .sh{font-size:11px;font-weight:700;color:#16283c;margin:12px 0 4px}
+#lqfn .mut{color:#8894a0}
+</style>
+<div class="lq-card" id="lqfn" style="margin-top:12px">
+<div style="font-size:16px;font-weight:800;margin-bottom:2px">Lead Funnel &amp; Reporting</div>
+<div class="lq-sub" id="lqfn-sub" style="margin-bottom:6px">Loading&hellip;</div>
+<div id="lqfn-body"></div>
 </div>
-<script>
-(function(){
-function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-fetch('leads.json?t='+Date.now()).then(function(r){return r.json();}).then(function(d){
-var LS=d.leadSources,host=document.getElementById('lq-src-wrap'),sub=document.getElementById('lq-src-sub');
-if(!LS||!LS.rows){sub.textContent='lead-source data not in the feed yet.';return;}
-var rows=LS.rows.slice().sort(function(a,b){return b.leads-a.leads;});
-var totL=rows.reduce(function(a,x){return a+x.leads;},0),totS=rows.reduce(function(a,x){return a+x.sql;},0),totW=rows.reduce(function(a,x){return a+(x.won||0);},0);
-var other=null; rows.forEach(function(r){ if(r.channel==='Other') other=r; });
-var otherPct=(other&&totL)?Math.round(other.leads/totL*100):0;
-sub.innerHTML='Volume by acquisition channel. <b>'+totL.toLocaleString()+'</b> leads &middot; <b>'+totS.toLocaleString()+'</b> converted to deals &middot; <b>'+totW.toLocaleString()+'</b> won. Lead-side attribution is newly rolled out, so <b>'+otherPct+'%</b> of leads are still unattributed (shown as &ldquo;Other&rdquo;) and SQLs use deal-side attribution &mdash; treat this as <b>volume only</b>; per-channel conversion isn\u2019t comparable until lead attribution is backfilled.';
-function th(t,r){return '<th style="text-align:'+(r?'right':'left')+';font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:6px 14px 6px 0;border-bottom:1.5px solid #dde4ea;white-space:nowrap">'+t+'</th>';}
-function td(t,r,b,mut){return '<td style="padding:6px 14px 6px 0;border-bottom:1px solid #eef2f5;white-space:nowrap;'+(mut?'color:#8894a0;':'color:#41525f;')+(r?'text-align:right;font-variant-numeric:tabular-nums;':'')+(b?'font-weight:700;color:#16283c;':'')+'">'+t+'</td>';}
-var h='<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>'+th('Channel')+th('Leads',1)+th('SQLs',1)+th('Won',1)+'</tr></thead><tbody>';
-h+=rows.map(function(x){var mut=(x.channel==='Other');return '<tr>'+td(esc(x.channel),0,!mut,mut)+td(Number(x.leads).toLocaleString(),1)+td(Number(x.sql).toLocaleString(),1)+td(Number(x.won||0).toLocaleString(),1)+'</tr>';}).join('');
-h+='<tr><td style="padding:8px 14px 8px 0;font-weight:800;color:#16283c">All channels</td><td style="padding:8px 14px 8px 0;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">'+totL.toLocaleString()+'</td><td style="padding:8px 14px 8px 0;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">'+totS.toLocaleString()+'</td><td style="padding:8px 14px 8px 0;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">'+totW.toLocaleString()+'</td></tr>';
-h+='</tbody></table>';
-host.innerHTML=h;
-var note=document.getElementById('lq-src-note'); if(note) note.textContent=LS.note||'';
-}).catch(function(){var s=document.getElementById('lq-src-sub'); if(s) s.textContent='could not load lead-source data.';});
-})();
-</script>
-<!-- LQ-SRC-END -->
-</section>
+<script>!function(){function e(e){return String(null==e?'':e).replace(/[&<>"]/g,function(e){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[e]})}function t(e){return Number(e||0).toLocaleString()}function a(e,t,a,n){return'<div class="fc"><div class="fch"><div class="fct">'+e+'</div>'+(n?'<span class="fcb">'+n+'</span>':'')+'</div>'+(t?'<div class="fcs">'+t+'</div>':'<div style="height:8px"></div>')+a+'</div>'}function n(e,a,n,s){return'<div class="br"><div class="brl">'+e+'</div><div class="brt"><div class="brf" style="width:'+(n?Math.round(a/n*100):0)+'%;background:'+s+';min-width:'+(a>0?2:0)+'px"></div></div><div class="brv">'+t(a)+'</div></div>'}function s(e,t){var a='<table><thead><tr>';return e.forEach(function(e){a+='<th>'+e+'</th>'}),a+='</tr></thead><tbody>',t.forEach(function(e){a+='<tr>',e.forEach(function(e){a+='<td>'+e+'</td>'}),a+='</tr>'}),a+'</tbody></table>'}function d(e){var t='<div class="tg">';return e.forEach(function(e){t+='<div class="tl"><div class="tlv">'+e[1]+'</div><div class="tll">'+e[0]+'</div></div>'}),t+'</div>'}var o='#0e7c86',i='#1f9d57',r='<div class="gap">';fetch('leads.json?t='+Date.now()).then(function(e){return e.json()}).then(function(l){var c=l.funnel,v=l.leadSources,u=document.getElementById('lqfn-body'),p=document.getElementById('lqfn-sub');if(c){var m=c.overview,h=l.timeToConversion||{},f='';p.innerHTML='Ten dashboards from the lead reporting spec, on your live Pipedrive data. Funnel reflects the <b>'+t(c.activeLeads)+'</b> active/inbox leads (snapshot). Time-cohort trends, stage velocity and days-in-status need the stage date-stamp fields (not set up), and are marked where they apply.';var y=Math.max(m.leads,m.mql,m.discoveryBooked,m.sqlConverted,m.won)||1,g=n('Leads',m.leads,y,o)+n('MQLs',m.mql,y,o)+n('Discovery Booked',m.discoveryBooked,y,'#3a9aa4')+n('SQLs',m.sqlConverted,y,i)+n('Won',m.won,y,i);f+=a('1 · Lead Funnel Overview','Lead → MQL → Discovery → SQL',g+=r+'Leads / MQLs / Discovery Booked are the current live pipeline; SQLs / Won are all-time converted deals. Discovery <i>Requested</i> and <i>Completed</i> have no dedicated Pipedrive field. A true period cohort funnel needs the stage date stamps.</div>');var L=s(['Stage transition','Rate'],[['Lead → MQL (current mix)',c.conversionSnapshot.leadToMql+'%'],['MQL → Discovery Booked',c.conversionSnapshot.mqlToBooked+'%'],['Lead → SQL (all-time)',c.conversionAllTime.leadToSql+'%'],['SQL → Won',c.conversionAllTime.sqlToWon+'%']]);f+=a('2 · Conversion Rates','Between funnel stages',L+=r+'Snapshot rates from current stage mix + all-time conversion. Previous-month / quarter / rolling / YTD comparisons need stage-transition history (date stamps).</div>');var b=c.statusAll||[],S=b.reduce(function(e,t){return Math.max(e,t.count)},1),Q='';b.forEach(function(t){Q+=n(e(t.status),t.count,S,o)}),f+=a('3 · MQL Pipeline by status','Live leads by Lead Status',Q+=r+'Current count in each Lead Status. Trend over time and average days in status need the date stamps.</div>',t(c.activeLeads)+' active');var w='';if(v&&v.rows){var k=v.rows.slice().sort(function(e,t){return t.leads-e.leads}),M=k.reduce(function(e,t){return e+t.leads},0),q=k.reduce(function(e,t){return e+t.sql},0);w=s(['Channel','Leads','SQLs','Won'],k.map(function(a){return[e(a.channel),t(a.leads),t(a.sql),t(a.won)]}).concat([['<b>All channels</b>','<b>'+t(M)+'</b>','<b>'+t(q)+'</b>','']])),w+=r+'Volume by acquisition channel. Leads use lead-side Attribution Source (newly rolled out — most historical leads sit in “Other”); SQLs use deal-side. MQL/Discovery-per-source columns need broader stage coverage. Volume only.</div>'}f+=a('4 · Lead Sources','Volume by channel',w);var x=s(['Rep','Leads','MQLs','Mtg Booked','Converted'],(c.byRep||[]).map(function(a){return[e(a.rep),t(a.leads),t(a.mql),t(a.meetingBooked),t(a.converted)]}));f+=a('5 · Sales Team Performance','Per lead owner',x+=r+'Per owner, from live leads. MQL→Booked→Completed→SQL conversion ratios per rep need the stage dates.</div>');var T=l.weekly||[],C=T.reduce(function(e,t){return Math.max(e,t.total)},1),B='<div style="display:flex;align-items:flex-end;gap:3px;height:90px;margin-top:4px">';T.forEach(function(t){var a=Math.round(t.total/C*80);B+='<div title="'+e(t.week)+': '+t.total+'" style="flex:1;background:'+o+';height:'+Math.max(2,a)+'px;border-radius:2px 2px 0 0"></div>'}),B+='</div><div class="tll" style="margin-top:3px">New leads per ISO week (last '+T.length+')</div>',f+=a('6 · Weekly Funnel Trends','New leads by week',B+=r+'New leads per week is live. New MQLs / Discovery per week (and week-over-week %, 4-week MA, YoY) need stage-entry dates.</div>');var D=c.topChannels||[],A=d([['Leads',t(m.leads)],['MQLs',t(m.mql)],['Discovery Booked',t(m.discoveryBooked)],['SQLs',t(m.sqlConverted)],['Won',t(m.won)]]);A+='<div style="height:8px"></div>'+d([['Lead → MQL',c.conversionSnapshot.leadToMql+'%'],['Lead → SQL',c.conversionAllTime.leadToSql+'%'],['Avg Lead→SQL',null!=h.avgDays?h.avgDays+'d':'—']]),f+=a('7 · Executive Dashboard','Volume · conversion · speed · quality',A+='<div class="sh">Top channels by SQL</div>'+(D.length?s(['Channel','SQLs'],D.map(function(a){return[e(a.channel),t(a.sql)]})):'<div class="fcs">no attributed SQLs yet</div>')),f+=a('8 · Campaign Performance','Per campaign','<div style="font-size:12px;color:#16283c;line-height:1.5">Cost-per-Lead / MQL / SQL can’t be computed — Pipedrive doesn’t hold ad spend. Per-campaign volumes need a Campaign field on the lead (none found).</div>'+r+'Unblock: add a Campaign field (or UTM-campaign capture) for volumes, and a spend feed (Google/LinkedIn Ads) for cost metrics.</div>','needs ad spend');var P=c.agingMatrix||[],E=c.ageOrder||[],R=s(['Status'].concat(E).concat(['Total']),P.map(function(a){return[e(a.status)].concat(a.cells.map(function(e){return e?t(e):'<span class="mut">–</span>'})).concat(['<b>'+t(a.total)+'</b>'])}));f+=a('9 · Aging Report','Live leads by status × age',R+=r+'Buckets use time since the lead was created (a proxy). True “days in current status” needs the status date stamps.</div>');var W='<span class="mut">needs dates</span>',I=s(['Transition','Avg days'],[['Lead → SQL (converted)',(null!=h.avgDays?h.avgDays+'d':'—')+(null!=h.medianDays?' <span class="mut">(med '+h.medianDays+'d)</span>':'')],['Lead → MQL',W],['MQL → Discovery Requested',W],['Requested → Booked',W],['Booked → Completed',W],['Completed → SQL',W]]);f+=a('10 · Sales Velocity','Avg time between stages',I+=r+'Only Lead→SQL is measurable today (lead created → deal created). Between-stage velocity needs the stage date stamps.</div>','partial'),u.innerHTML=f}else p.textContent='funnel data not in the feed yet.'}).catch(function(e){var t=document.getElementById('lqfn-sub');t&&(t.textContent='could not load funnel data.')})}();</script>
+<!-- LQ-FUNNEL-END --></section>
 <!-- LEADS-INTEL-END v3 -->
 </body>
 </html>
