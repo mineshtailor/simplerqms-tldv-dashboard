@@ -482,6 +482,7 @@ function setupScrollSpy(){
 
 
 
+
 <!-- LEADS-INTEL-START v3 -->
 <section id="leads-intel" style="max-width:1180px;margin:48px auto 24px;padding:0 16px;font-family:inherit">
 <style>
@@ -877,6 +878,9 @@ if(window.Chart){boot();}else{var s=document.createElement('script');s.src='http
 
 
 
+
+
+
 <!-- LQ-TT-START -->
 <div class="lq-card" id="lq-tt" style="margin-top:12px">
 <div style="font-size:15px;font-weight:800;margin-bottom:2px">Leads by type &mdash; monthly, this year vs last</div>
@@ -975,18 +979,19 @@ document.addEventListener('keydown',function(e){if(e.key==='Escape'&&modal.style
 <script>
 (function(){
 function esc(s){return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];});}
-function bar(p){p=Math.max(0,Math.min(100,p||0));return '<span style="display:inline-block;height:7px;border-radius:4px;background:#0e7c86;width:'+p+'%;min-width:'+(p>0?2:0)+'px"></span>';}
 fetch('leads.json?t='+Date.now()).then(function(r){return r.json();}).then(function(d){
 var LS=d.leadSources,host=document.getElementById('lq-src-wrap'),sub=document.getElementById('lq-src-sub');
 if(!LS||!LS.rows){sub.textContent='lead-source data not in the feed yet.';return;}
 var rows=LS.rows.slice().sort(function(a,b){return b.leads-a.leads;});
-var totL=rows.reduce(function(a,x){return a+x.leads;},0),totS=rows.reduce(function(a,x){return a+x.sql;},0);
-sub.innerHTML='Volume and conversion by channel, from Attribution Source. <b>'+totL.toLocaleString()+'</b> leads &middot; <b>'+totS.toLocaleString()+'</b> converted to deals (SQL proxy). MQL &amp; Discovery columns arrive once the stage date-stamps are live.';
-function th(t,r){return '<th style="text-align:'+(r?'right':'left')+';font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:6px 12px 6px 0;border-bottom:1.5px solid #dde4ea;white-space:nowrap">'+t+'</th>';}
-function td(t,r,b){return '<td style="padding:6px 12px 6px 0;border-bottom:1px solid #eef2f5;white-space:nowrap;color:#41525f;'+(r?'text-align:right;font-variant-numeric:tabular-nums;':'')+(b?'font-weight:700;color:#16283c;':'')+'">'+t+'</td>';}
-var h='<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>'+th('Channel')+th('Leads',1)+th('SQLs',1)+th('Lead\u2192SQL',1)+th('')+'</tr></thead><tbody>';
-h+=rows.map(function(x){return '<tr>'+td(esc(x.channel),0,1)+td(Number(x.leads).toLocaleString(),1)+td(Number(x.sql).toLocaleString(),1)+td((x.sqlPct||0)+'%',1)+'<td style="padding:6px 0;border-bottom:1px solid #eef2f5;width:120px">'+bar(x.sqlPct)+'</td></tr>';}).join('');
-h+='<tr><td style="padding:8px 12px 8px 0;font-weight:800;color:#16283c">All channels</td><td style="padding:8px 12px 8px 0;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">'+totL.toLocaleString()+'</td><td style="padding:8px 12px 8px 0;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">'+totS.toLocaleString()+'</td><td style="padding:8px 12px 8px 0;text-align:right;font-weight:800">'+(totL?Math.round(totS/totL*1000)/10:0)+'%</td><td></td></tr>';
+var totL=rows.reduce(function(a,x){return a+x.leads;},0),totS=rows.reduce(function(a,x){return a+x.sql;},0),totW=rows.reduce(function(a,x){return a+(x.won||0);},0);
+var other=null; rows.forEach(function(r){ if(r.channel==='Other') other=r; });
+var otherPct=(other&&totL)?Math.round(other.leads/totL*100):0;
+sub.innerHTML='Volume by acquisition channel. <b>'+totL.toLocaleString()+'</b> leads &middot; <b>'+totS.toLocaleString()+'</b> converted to deals &middot; <b>'+totW.toLocaleString()+'</b> won. Lead-side attribution is newly rolled out, so <b>'+otherPct+'%</b> of leads are still unattributed (shown as &ldquo;Other&rdquo;) and SQLs use deal-side attribution &mdash; treat this as <b>volume only</b>; per-channel conversion isn\u2019t comparable until lead attribution is backfilled.';
+function th(t,r){return '<th style="text-align:'+(r?'right':'left')+';font-size:10px;text-transform:uppercase;letter-spacing:.06em;opacity:.6;padding:6px 14px 6px 0;border-bottom:1.5px solid #dde4ea;white-space:nowrap">'+t+'</th>';}
+function td(t,r,b,mut){return '<td style="padding:6px 14px 6px 0;border-bottom:1px solid #eef2f5;white-space:nowrap;'+(mut?'color:#8894a0;':'color:#41525f;')+(r?'text-align:right;font-variant-numeric:tabular-nums;':'')+(b?'font-weight:700;color:#16283c;':'')+'">'+t+'</td>';}
+var h='<table style="width:100%;border-collapse:collapse;font-size:12.5px"><thead><tr>'+th('Channel')+th('Leads',1)+th('SQLs',1)+th('Won',1)+'</tr></thead><tbody>';
+h+=rows.map(function(x){var mut=(x.channel==='Other');return '<tr>'+td(esc(x.channel),0,!mut,mut)+td(Number(x.leads).toLocaleString(),1)+td(Number(x.sql).toLocaleString(),1)+td(Number(x.won||0).toLocaleString(),1)+'</tr>';}).join('');
+h+='<tr><td style="padding:8px 14px 8px 0;font-weight:800;color:#16283c">All channels</td><td style="padding:8px 14px 8px 0;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">'+totL.toLocaleString()+'</td><td style="padding:8px 14px 8px 0;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">'+totS.toLocaleString()+'</td><td style="padding:8px 14px 8px 0;text-align:right;font-weight:800;font-variant-numeric:tabular-nums">'+totW.toLocaleString()+'</td></tr>';
 h+='</tbody></table>';
 host.innerHTML=h;
 var note=document.getElementById('lq-src-note'); if(note) note.textContent=LS.note||'';
